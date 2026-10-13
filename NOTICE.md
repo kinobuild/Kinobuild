@@ -81,4 +81,24 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
 
 ## 上游同步
 
-本仓库不追踪上游。如需合并上游改动，请手动处理。
+本仓库不追踪上游（`upstream` 仅作参考）。合并上游改动时按下面五步走：
+
+1. **合并**：`git merge --no-ff upstream/main`。保留合并提交，日后才分得清
+   哪些来自上游、哪些是本仓库的改动。
+2. **删回上游宣传技能**：上游会把 `general-assistant/skills/octop-assistant/`
+   带回来（见第 7 节）。`tests/unit/agents/test_general_assistant_template.py`
+   会因此失败——**删目录，不要删测试**。
+3. **跑品牌兜底测试**：`pytest tests/unit/agents/test_content_branding.py`。
+   它覆盖后端 i18n、专家与插件模板、前端 `dashboard/src/locales/`、
+   连接器描述 `src/octop/infra/connectors/catalog.json`，命中上游品牌名即失败。
+4. **核对锁文件**：`pytest tests/unit/test_lockfile_matches_pyproject.py`。
+   上游抬高了 `pyproject.toml` 里 `octop-*` 的下限，而合并冲突很容易把
+   `uv.lock` 解成我们的旧版；`docker/Dockerfile` 用 `uv sync --frozen`，
+   它完全信任锁文件，装错版本等于启动即错。
+5. **重扫没有测试守着的用户可见文案**：CLI 帮助与横幅（`src/octop/cli/**`）、
+   首启向导横幅（`src/octop/infra/server.py`）、飞书机器人问候语
+   （`src/octop/infra/gateway/bot_creators/`），以及前端里硬编码的字符串。
+   这几处目前没有人守，只能靠人看。
+
+第 2～4 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
+必须把锁文件一起同步到服务器（见 `DEPLOY.md` 第 3.5 节）。
