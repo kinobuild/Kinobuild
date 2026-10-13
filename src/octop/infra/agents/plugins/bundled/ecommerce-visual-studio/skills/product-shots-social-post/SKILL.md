@@ -1,6 +1,7 @@
 ---
 name: product-shots-social-post
-description: 'Designs social-platform-native visuals (Feed, Story, Reel, Carousel formats) for Instagram, TikTok, Facebook, Pinterest, RedNote, LinkedIn, X/Twitter and other social platforms — with platform-correct dimensions, safe zones, industry visual DNA, engagement hooks, and cross-slide consistency. Use when the user says "social post", "Instagram post", "IG post", "TikTok post", "Facebook post", "Pinterest pin", "social carousel", "feed post", "story post", "make a post", "design a social visual", "社媒帖", "做一个社媒图", or any underspecified social-media visual request. Routed from `product-shots` for the organic-social branch (non-ad).'
+description: "社媒图（Instagram/小红书等）。"
+
 license: MIT
 metadata:
   author: motiful

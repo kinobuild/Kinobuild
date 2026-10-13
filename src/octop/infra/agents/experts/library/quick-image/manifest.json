@@ -1,0 +1,20 @@
+{
+  "id": "quick-image",
+  "label": {"zh": "快图 · 一句话出图", "en": "Quick Image"},
+  "description": {
+    "zh": "极简出图助手「快图」— 给一张商品参考图加一句话，直接出带中文文案的主图。不加流程、不做自检、不写脚本，快且省。",
+    "en": "Minimal image assistant — one product photo plus one sentence, get a ready-to-post main image."
+  },
+  "welcome_message": "发商品图 + 一句话，我直接出图",
+  "icon_name": "zap",
+  "color": "#f59e0b",
+  "prompt_files": ["SOUL.md", "IDENTITY.md"],
+  "quick_prompts": [
+    "基于这张图做一张淘宝主图，带卖点文案",
+    "换个场景，做成居家氛围的主图",
+    "做一张白底主图，加中文卖点"
+  ],
+  "task_examples": [
+    {"zh": "基于这张电商参考图做一张带文案的主图", "en": "Make a main image with copy from this product photo"}
+  ]
+}

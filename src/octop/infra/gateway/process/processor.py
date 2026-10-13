@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -563,9 +564,33 @@ class GlobalProcessor:
             needs_multimodal=needs_multimodal,
         )
 
+    def _agent_reasoning_mode(self, agent_id: str) -> str | None:
+        """Reasoning mode pinned on the agent's own config, if any.
+
+        Lets a bundled expert declare "this agent never needs extended thinking"
+        (``config_json.reasoning_mode = "disabled"``) instead of relying on the
+        user to toggle it in every new conversation.
+        """
+        if not agent_id:
+            return None
+        try:
+            row = self._agent_repo.get(agent_id)
+        except Exception:
+            return None
+        if row is None:
+            return None
+        raw = getattr(row, "config_json", None) or "{}"
+        try:
+            cfg = json.loads(raw) if isinstance(raw, str) else dict(raw)
+        except (TypeError, ValueError):
+            return None
+        value = str(cfg.get("reasoning_mode") or "").strip().lower()
+        return value if value in ("auto", "enabled", "disabled") else None
+
     def _resolve_reasoning_overrides(
         self,
         *,
+        agent_id: str = "",
         user_id: int,
         thread_id: str,
         model_ref: str | None,
@@ -584,11 +609,16 @@ class GlobalProcessor:
         user_pref = user_prefs.get(model_ref)
         raw_mode = (meta or {}).get("reasoning_mode")
         raw_effort = (meta or {}).get("reasoning_effort")
+        # Agent-level default, so a deliberately simple agent can ship with thinking
+        # off and every new thread inherits it without the user toggling it each time.
+        agent_mode = self._agent_reasoning_mode(agent_id)
         mode = (
             str(raw_mode)
             if raw_mode in ("auto", "enabled", "disabled")
             else thread.reasoning_mode
             if thread is not None and thread.reasoning_mode
+            else agent_mode
+            if agent_mode
             else user_pref.mode
             if user_pref is not None
             else None
@@ -1322,6 +1352,7 @@ class GlobalProcessor:
             needs_multimodal=content_blocks_need_vision(content),
         )
         reasoning_overrides = self._resolve_reasoning_overrides(
+            agent_id=agent_id,
             user_id=user_id,
             thread_id=thread_id,
             model_ref=model_ref,

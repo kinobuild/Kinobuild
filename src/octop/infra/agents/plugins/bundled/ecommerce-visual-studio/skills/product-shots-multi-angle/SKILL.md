@@ -1,6 +1,7 @@
 ---
 name: product-shots-multi-angle
-description: 'Generates 9 consistent multi-angle fashion-editorial portraits from a single reference image, with locked identity (face/skin/eyes), preserved hairstyle structure, faithful outfit/accessories, and a unified photography style across all frames. Use when the user says "multi-angle", "multi-angle shots", "九连拍", "多角度九连拍", "9-angle portraits", "fashion lookbook", "model consistency series", "consistent portraits from one photo", "generate 9 angles of this model", or "e-commerce model multi-angle pack". Part of the product-shots ecosystem for cross-border e-commerce apparel and accessory listings.'
+description: "多角度商品图。"
+
 license: MIT
 metadata:
   author: motiful

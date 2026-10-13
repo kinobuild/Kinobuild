@@ -1,6 +1,7 @@
 ---
 name: product-shots-main-image
-description: 'Designs Amazon-compliant main product images and the 7 secondary image types (Infographic / Multi-angle / Detail Shot / Lifestyle / Variants / What''s in Box / Size Reference) — with platform-mandatory main-image rules, conversion-rate-tuned secondary types per product category, and multi-image consistency anchored to the main image URL. Use when the user says "Amazon main image", "亚马逊主图", "product main image", "white background product image", "Amazon listing image", "亚马逊副图", "secondary images", "product carousel images", or any request for the 1:1 product image suite that lives on the Amazon detail page carousel. For A+ Content / detail-page modules (21:9 Hero Banner and 3:2 module layouts), see the `product-shots-detail-page` skill.'
+description: "亚马逊主图与副图（**禁止文字**）。用户说「亚马逊主图」时用。"
+
 license: MIT
 metadata:
   author: motiful

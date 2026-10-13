@@ -1,6 +1,7 @@
 ---
 name: product-shots-image-gen
-description: '出图引擎（Octop 原生版）。把 product-shots 生态里各技能写好的 prompt 转成一次内置 generate_image 调用——文生图与图生图（参考图）统一入口。当用户说「生成图片」「做一张图」「把这张图改一下」「渲染一下」，或其它 product-shots 技能走到出图这一步时使用。只负责出图：接收 prompt + 可选参考图，交出图片。'
+description: "出图引擎。把一个 prompt 转成一次内置 generate_image 调用。"
+
 license: MIT
 metadata:
   author: motiful (adapted for Octop)
