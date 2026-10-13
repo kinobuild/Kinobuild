@@ -51,6 +51,27 @@
 - `README.md` 替换为 KinoGuild 的说明。
 - 上游原始 README 保留为 `README_UPSTREAM.md` 与 `README_UPSTREAM_CN.md`，未作改动。
 
+## 7. 移除：`general-assistant` 的 `octop-assistant` 技能
+
+**改动**：删除 `src/octop/infra/agents/experts/library/general-assistant/skills/octop-assistant/`
+（623 行），该专家不再携带任何技能。
+
+**原因**：`general-assistant` 是 `DEFAULT_EXPERT_ID`，每个新用户的第一个 agent 都是它。
+上游给这个专家只配了一个技能，而这份 623 行文档的前 ~80 行是产品 README 的逐字搬运
+（亮点表、入口、安装）。控制台的「个性化 → 技能」会原样渲染 SKILL.md，
+于是终端用户打开就能看到一份上游产品宣传册 —— 对一个已改名的 fork 来说观感很差，
+而且对普通用户毫无用处：他们既不是管理员，也改不了模型与通道，那份文档的后 500 行
+CLI 配置指导对他们不适用。
+
+**合并提示**：上游在持续维护该技能（例如 #1311）。合并回来时目录会被 git 还原，
+需要再次删除。`tests/unit/agents/test_general_assistant_template.py` 中有一条
+`test_upstream_product_brochure_skill_is_not_shipped` 会因此失败 —— **不要删这条测试**，
+删掉技能目录即可。
+
+**已建 agent**：模板改动只影响新建 agent。已存在的 agent 工作区里是拷贝，
+需要通过 `DELETE /api/agents/{agent_id}/skills/octop-assistant` 软删除
+（写 `removed: true` 标记，列表即不再显示）。
+
 ## 版权归属
 
 - 基础代码：Copyright (c) 2026 Octop（Tencent Cloud）— 完整 MIT 文本见 `LICENSE`

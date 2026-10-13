@@ -104,8 +104,12 @@ async def test_main_agent_seeds_general_assistant_workspace(patched_app_client: 
     await bootstrap_admin(c, home)
     ws = home / "agents" / "main"
     assert (ws / "SOUL.md").is_file()
-    # New agents use system_files_path=.octop — BackendWorkspace remaps skills/.
-    assert (ws / ".octop" / "skills" / "octop-assistant" / "SKILL.md").is_file()
+    # The default expert deliberately ships no skills (see
+    # tests/unit/agents/test_general_assistant_template.py for why upstream's
+    # octop-assistant was dropped): its 623-line body was the product README and
+    # every new user's first agent rendered it in the personalisation tab.
+    assert not (ws / ".octop" / "skills" / "octop-assistant").exists()
+    assert (ws / "SOUL.md").is_file()
 
 
 async def test_main_agent_uses_fs_root_backend(patched_app_client: Any) -> None:
