@@ -399,7 +399,7 @@ def render_systemd_unit(runtime: ServiceRuntime, *, user_unit: bool | None = Non
     nofile_line = f"LimitNOFILE={nofile}\n" if nofile is not None else ""
     return (
         "[Unit]\n"
-        "Description=Octop AI Server\n"
+        "Description=KinoGuild AI Server\n"
         "After=network.target\n"
         "\n"
         "[Service]\n"

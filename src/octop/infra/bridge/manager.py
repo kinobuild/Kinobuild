@@ -223,7 +223,7 @@ class BridgeManager:
         if is_self_peer_url(peer_base_url, self._advertise_base_url):
             raise OctopError(
                 ErrorCode.BRIDGE_SELF_CONNECT,
-                "cannot link this Octop instance to itself",
+                "cannot link this KinoGuild instance to itself",
             )
         other = self._find_peer_link(
             owner_user_id,

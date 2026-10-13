@@ -149,7 +149,7 @@ def list_orphan_agent_dirs(root: Path) -> list[str]:
             raise RuntimeError(status["error"])
         directories: list[str] = status["directories"]
         return directories
-    raise RuntimeError("Octop returned no directory list")
+    raise RuntimeError("KinoGuild returned no directory list")
 
 
 def list_memory_slim_agents(root: Path, *, locale: str = "en") -> list[dict[str, str]]:
@@ -159,7 +159,7 @@ def list_memory_slim_agents(root: Path, *, locale: str = "en") -> list[dict[str,
             raise RuntimeError(status["error"])
         agents: list[dict[str, str]] = status["agents"]
         return agents
-    raise RuntimeError("Octop returned no agent list")
+    raise RuntimeError("KinoGuild returned no agent list")
 
 
 def _request_control(root: Path, request: dict[str, Any]) -> Iterator[dict[str, Any]]:
@@ -173,4 +173,4 @@ def _request_control(root: Path, request: dict[str, Any]) -> Iterator[dict[str, 
                 yield status
                 if status.get("phase") in {"done", "failed", "agents", "directories"}:
                     return
-    raise RuntimeError("Octop disconnected; check the dashboard before retrying maintenance")
+    raise RuntimeError("KinoGuild disconnected; check the dashboard before retrying maintenance")

@@ -6,9 +6,13 @@ prose — and the model reads the same text as prompt. A file that still calls
 the product ``Octop`` therefore ships the upstream brand to users, which is
 exactly what happened once: the last rename pass covered i18n strings and code
 but not the content templates, so the personalisation page was full of Octop.
+It happened again from the other direction: merging upstream re-introduced
+``Octop`` into the dashboard locale catalog and the connector cards, neither of
+which was scanned at the time.
 
-Both halves are covered here — the i18n catalog and the content templates — so
-the next rename pass fails loudly instead of silently.
+All four surfaces are covered here — backend i18n, content templates, dashboard
+locales and connector descriptions — so the next rename or upstream merge fails
+loudly instead of silently.
 """
 
 from __future__ import annotations
@@ -27,13 +31,20 @@ def _content_roots() -> tuple[Path, ...]:
     package_dir = Path(octop.__file__).resolve().parent
     experts_dir = Path(expert_catalog.__file__).resolve().parent
     plugins_dir = Path(plugins.__file__).resolve().parent
-    return (
+    roots: list[Path] = [
         experts_dir / "library",
         experts_dir / "manifest_generator_skill.md",
         plugins_dir / "bundled",
         package_dir / "i18n" / "en.json",
         package_dir / "i18n" / "zh.json",
-    )
+        # Connector cards render these descriptions verbatim in the dashboard.
+        package_dir / "infra" / "connectors" / "catalog.json",
+    ]
+    # Dashboard i18n is front-end source; a slim runtime image may not carry it.
+    dashboard_locales = package_dir.parent.parent / "dashboard" / "src" / "locales"
+    if dashboard_locales.is_dir():
+        roots.extend(sorted(dashboard_locales.glob("*.json")))
+    return tuple(roots)
 
 
 #: Text file types that carry prose. Anything else (icons, fonts) cannot.
@@ -111,6 +122,7 @@ def test_brand_scan_reads_the_real_content_tree() -> None:
     assert "SOUL.md" in names
     assert "SKILL.md" in names
     assert "manifest.json" in names
+    assert "catalog.json" in names
     assert {"en.json", "zh.json"} <= names
 
 

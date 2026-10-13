@@ -1,4 +1,4 @@
-"""`octop service` — install and manage the Octop system service."""
+"""`octop service` — install and manage the KinoGuild system service."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from octop.infra.setup.service import (
 
 @click.group()
 def service() -> None:
-    """Manage the Octop system service (systemd on Linux, launchd on macOS)."""
+    """Manage the KinoGuild system service (systemd on Linux, launchd on macOS)."""
 
 
 def _runtime(host: str | None, port: int | None, scope: ServiceScope | None) -> ServiceRuntime:
