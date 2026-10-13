@@ -265,6 +265,32 @@ def _models_list_url(base_url: str | None) -> str:
     return f"{root}/models"
 
 
+def _model_entry(item: dict[str, Any], model_id: str) -> dict[str, Any]:
+    """Keep the capability metadata the runtime actually consumes.
+
+    An OpenAI-compatible ``/models`` payload carries far more than ``id``.
+    Current providers advertise input modalities and context limits, e.g.
+    ``deepseek-flash`` reports ``input_modalities: ["text", "image"]`` and a
+    1,048,576-token window. Collapsing every entry to ``{id, name}`` made each
+    synced model look text-only, so a vision model was never offered image
+    input (the dashboard route refused it) and the real context window was lost.
+    """
+    entry: dict[str, Any] = {"id": model_id, "name": str(item.get("name") or model_id)}
+
+    modalities = item.get("input_modalities") or item.get("input")
+    if isinstance(modalities, list):
+        kept = [str(m) for m in modalities if isinstance(m, str) and m.strip()]
+        if kept:
+            entry["input"] = kept
+
+    # Accept both the OpenAI-style and the older/alternate limit keys.
+    for key in ("context_window", "max_input_tokens", "max_output_tokens", "max_tokens"):
+        value = item.get(key)
+        if isinstance(value, int) and value > 0:
+            entry[key] = value
+    return entry
+
+
 async def fetch_openai_compatible_models(
     *,
     base_url: str | None,
@@ -315,7 +341,7 @@ async def fetch_openai_compatible_models(
             "error": "response is not OpenAI-compatible (expected {data: [{id, …}]})",
         }
 
-    models: list[dict[str, str]] = []
+    models: list[dict[str, Any]] = []
     seen: set[str] = set()
     for item in data:
         if not isinstance(item, dict):
@@ -327,6 +353,6 @@ async def fetch_openai_compatible_models(
         if mid in seen:
             continue
         seen.add(mid)
-        models.append({"id": mid, "name": mid})
+        models.append(_model_entry(item, mid))
     models.sort(key=lambda m: m["id"])
     return {"ok": True, "models": models}

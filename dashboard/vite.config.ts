@@ -172,9 +172,10 @@ export default defineConfig(({ mode }) => {
       suppressViteDisconnectReload(),
       react(),
       VitePWA({
-        // prompt: new SW stays in waiting until the user accepts via
-        // PwaUpdatePrompt → applyUpdate() → SKIP_WAITING. Avoid autoUpdate
-        // skipWaiting + page reload loops (especially Safari/WebKit).
+        // Registration is manual (injectRegister:false → sw-register.ts). The
+        // generated worker activates immediately (workbox.skipWaiting below) so a
+        // deploy cannot strand users on the previous precache; the banner stays as
+        // a "reload to see it" affordance.
         registerType: "prompt",
         // SW registration is handled in sw-register.ts for full control.
         injectRegister: false,
@@ -209,8 +210,21 @@ export default defineConfig(({ mode }) => {
           navigateFallback: null,
           // Take control on first activation so Chrome can fire beforeinstallprompt.
           clientsClaim: true,
-          // Do not activate updated workers until the user confirms (SKIP_WAITING).
-          skipWaiting: false,
+          // Activate updated workers immediately instead of parking them in
+          // "waiting".
+          //
+          // With skipWaiting:false a new deploy only reached users who clicked the
+          // update banner. Anyone who dismissed it kept the old worker in control,
+          // so even a full reload served the stale precache — indefinitely. That
+          // is how a rebranded logo stayed on screen for good.
+          //
+          // Safe despite the Safari/WebKit reload-loop warning that makes
+          // ``registerType: "autoUpdate"`` risky: this app never auto-reloads on
+          // ``controllerchange`` (see sw-register.ts), so the loop those two
+          // settings produce together cannot occur. A mid-session takeover that
+          // leaves the running page with mixed old/new chunks is caught by
+          // reloadOnStaleChunk's one-shot, sessionStorage-guarded reload.
+          skipWaiting: true,
           runtimeCaching: [
             {
               // Always revalidate the HTML shell so a new deploy is picked up

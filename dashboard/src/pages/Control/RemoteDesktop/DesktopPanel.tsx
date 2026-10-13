@@ -840,7 +840,7 @@ export default function DesktopPanel({
                 icon={<Copy size={14} />}
                 onClick={() => void handleCopyInstallLog()}
               >
-                {t("common.copyErrorForOctop", "复制错误信息")}
+                {t("common.copyErrorForKinoGuild", "复制错误信息")}
               </Button>
             </div>
             {renderInstallLog(
@@ -857,7 +857,7 @@ export default function DesktopPanel({
               }}
             >
               {t(
-                "common.askOctopHint",
+                "common.askKinoGuildHint",
                 "若安装失败，可复制下方错误信息发给 Octop 排查。",
               )}
             </div>
@@ -1210,7 +1210,7 @@ export default function DesktopPanel({
                         {
                           label: t(
                             "remoteDesktop.macPermStep3",
-                            "重启 Octop（octop run），再回到本页点击「重新检测」",
+                            "重启 KinoGuild 服务，再回到本页点击「重新检测」",
                           ),
                         },
                       ]

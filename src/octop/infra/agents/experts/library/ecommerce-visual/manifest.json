@@ -1,0 +1,131 @@
+{
+  "id": "ecommerce-visual",
+  "label": {
+    "zh": "图匠 · 电商视觉设计师",
+    "en": "Pic · E-commerce Visual Designer"
+  },
+  "description": {
+    "zh": "电商做图助手「图匠」— 把商品实拍图变成可直接上架的主图与场景图。支持白底主图、场景换背景、模特手持、细节卖点图、套装组合，一次出多张供挑选；内置平台规格与风格模板库，并强制遵守「商品必须保真」红线（颜色、材质、logo、结构不得改变）。",
+    "en": "E-commerce visual assistant 'Pic' — turns product photos into shelf-ready main images and lifestyle scenes. White-background hero shots, background swaps, model shots, detail/feature close-ups, and multi-item sets; multiple variants per run, with platform specs and a style template library. Enforces product fidelity (color, material, logo, structure must not change)."
+  },
+  "welcome_message": {
+    "zh": "发一张商品图给我，说清场景和用途，我出几版主图给你挑",
+    "en": "Send me a product photo with the scene and purpose, and I'll generate a few main-image variants to pick from"
+  },
+  "icon_name": "image",
+  "color": "#0ea5e9",
+  "prompt_files": [
+    "SOUL.md",
+    "IDENTITY.md"
+  ],
+  "quick_prompts": [
+    {
+      "title": {
+        "zh": "白底主图",
+        "en": "White-background main image"
+      },
+      "description": {
+        "zh": "纯白底棚拍，平台审核最稳",
+        "en": "Studio white background — safest for platform review"
+      },
+      "prompt": {
+        "zh": "请把这张商品图做成白底主图，1:1，出 4 张。商品颜色、材质、logo 和结构必须完全不变。\n\n商品图：",
+        "en": "Turn this product photo into a white-background main image, 1:1, 4 variants. Product color, material, logo, and structure must stay exactly the same.\n\nProduct photo:"
+      },
+      "color": "#e8f4ff",
+      "icon_name": "image"
+    },
+    {
+      "title": {
+        "zh": "换场景图",
+        "en": "Scene / background swap"
+      },
+      "description": {
+        "zh": "保留商品，换背景与氛围光",
+        "en": "Keep the product, change background and lighting"
+      },
+      "prompt": {
+        "zh": "请保留这张商品图中的商品完全不变，只更换场景与光线。想要的感觉是：___（如夏日户外/居家暖调/科技冷调），1:1，出 4 张。\n\n商品图：",
+        "en": "Keep the product in this photo exactly as-is; change only the scene and lighting. Desired feel: ___ (e.g. summer outdoor / warm home / cool tech), 1:1, 4 variants.\n\nProduct photo:"
+      },
+      "color": "#dcfce7",
+      "icon_name": "sparkles"
+    },
+    {
+      "title": {
+        "zh": "模特手持图",
+        "en": "Model / in-hand shot"
+      },
+      "description": {
+        "zh": "生活方式构图，人物面部不入镜",
+        "en": "Lifestyle composition, model face out of frame"
+      },
+      "prompt": {
+        "zh": "请做一张模特手持/佩戴的种草图，模特面部不入镜或虚化出画，服装为简约中性色不抢主体。商品本身必须完全不变。3:4，出 4 张。\n\n商品图：",
+        "en": "Create a lifestyle shot with a model holding/wearing the product; model's face out of frame or blurred. Neutral clothing that doesn't compete with the product. Product itself must stay exactly the same. 3:4, 4 variants.\n\nProduct photo:"
+      },
+      "color": "#fef3c7",
+      "icon_name": "user"
+    },
+    {
+      "title": {
+        "zh": "细节卖点图",
+        "en": "Detail / feature close-up"
+      },
+      "description": {
+        "zh": "放大工艺与材质，强调卖点",
+        "en": "Macro on craftsmanship and material"
+      },
+      "prompt": {
+        "zh": "请做一张细节特写图，聚焦这个商品的 ___（如镜头开孔边缘/缝线走线/材质纹理），极浅景深，凸显材质质感。不要改变商品颜色与结构。1:1，出 4 张。\n\n商品图：",
+        "en": "Create a macro detail shot focused on ___ (e.g. camera cutout edge / stitching / material texture), very shallow depth of field, emphasizing material quality. Do not change the product's color or structure. 1:1, 4 variants.\n\nProduct photo:"
+      },
+      "color": "#f3e8ff",
+      "icon_name": "search"
+    },
+    {
+      "title": {
+        "zh": "整店套图",
+        "en": "Batch for whole store"
+      },
+      "description": {
+        "zh": "同一套场景参数套用到多个商品",
+        "en": "Apply one scene preset across many products"
+      },
+      "prompt": {
+        "zh": "请用同一套场景与光线，为我这一批商品图统一出主图，保证店铺视觉一致。场景是：___，1:1，每个商品出 2 张，不要加水印。\n\n商品图：",
+        "en": "Using one consistent scene and lighting setup, generate main images for this batch of product photos so the store looks visually uniform. Scene: ___, 1:1, 2 variants each, no watermark.\n\nProduct photos:"
+      },
+      "color": "#eef2ff",
+      "icon_name": "layers"
+    },
+    {
+      "title": {
+        "zh": "主图转短视频",
+        "en": "Main image to short video"
+      },
+      "description": {
+        "zh": "用做主图的那张图生成展示视频",
+        "en": "Animate the chosen main image into a clip"
+      },
+      "prompt": {
+        "zh": "请用刚才选定的那张主图生成一段 5 秒的商品展示短视频，镜头缓慢推近并带轻微环绕，商品保持完全不变。",
+        "en": "Turn the chosen main image into a 5-second product showcase video — slow push-in with a slight orbit, product unchanged."
+      },
+      "color": "#fff1f2",
+      "icon_name": "presentation"
+    }
+  ],
+  "task_examples": {
+    "zh": [
+      "每周一「10:00」把上周新上的商品图各出一版白底主图，发给我挑",
+      "每天「18:00」汇总当天出图记录，列出还没人工复核的商品",
+      "每天「09:00」检查有没有出图失败的任务，失败的重试一次并告诉我结果"
+    ],
+    "en": [
+      "Every Monday at 10:00, generate a white-background main image for each product uploaded last week and send for selection",
+      "Every day at 18:00, summarize today's generated images and list products not yet human-reviewed",
+      "Every day at 09:00, check for failed image jobs, retry once, and report the outcome"
+    ]
+  }
+}

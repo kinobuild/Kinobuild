@@ -200,3 +200,76 @@ async def test_verify_media_credentials_uses_provider_probe(
         "url": expected_url,
         "auth": "Bearer provider-test-key",
     }
+
+
+# ---------------------------------------------------------------------------
+# 回归：只做单一模态的供应商（如 OpenAI 兼容中转站）
+#
+# 这类预设的 video_models 是空元组。原实现直接取 [0]，保存设置时抛
+# IndexError → PUT /admin/media-generation 返回 500，前端表现为「点保存没反应」。
+# ---------------------------------------------------------------------------
+
+
+def test_provider_preset_defaults_tolerate_missing_modality() -> None:
+    from octop.infra.agents.settings.media_generation import MEDIA_PROVIDER_PRESETS
+
+    preset = MEDIA_PROVIDER_PRESETS["openai"]
+    assert preset.video_models == ()
+    # 取值必须是空串而不是抛 IndexError
+    assert preset.default_video_model == ""
+    assert preset.default_image_model == "gpt-image-1"
+
+    # 反向：只做视频的预设也不该在取图像默认值时炸掉
+    from octop.infra.agents.settings.media_generation import MediaProviderPreset
+
+    video_only = MediaProviderPreset(
+        provider="minimax",
+        display_name="video only",
+        base_url="https://example.invalid",
+        image_models=(),
+        video_models=("some-video-model",),
+    )
+    assert video_only.default_image_model == ""
+    assert video_only.default_video_model == "some-video-model"
+
+
+def test_saving_image_only_provider_round_trips(
+    store: tuple[MediaGenerationSettingsStore, SettingsRepo, SecretRepo],
+) -> None:
+    media, _settings, _secrets = store
+    view = media.save(
+        enabled=True,
+        providers=[
+            MediaProviderUpdate(
+                id="relay-image",
+                provider="openai",
+                display_name="OpenAI 兼容中转站",
+                enabled=True,
+                base_url="https://relay.example.com/v1",
+                image_enabled=True,
+                video_enabled=False,
+                image_model="gpt-image-2.5",
+                # 前端在未渲染视频字段时传的就是空串
+                video_model="",
+                api_key="relay-secret-test",
+            )
+        ],
+        default_image_provider="relay-image",
+        default_video_provider=None,
+    )
+
+    assert view.configured is True
+    saved = next(item for item in view.providers if item.id == "relay-image")
+    assert saved.image_model == "gpt-image-2.5"
+    assert saved.video_enabled is False
+    assert saved.video_model == ""
+
+    # 再次 load() 不能炸（500 就出在这一步）
+    reloaded = media.load()
+    assert [item.id for item in reloaded.providers] == ["relay-image"]
+
+    config = media.harness_config()
+    assert config is not None
+    provider = next(item for item in config.providers if item.id == "relay-image")
+    assert provider.provider == "openai"
+    assert provider.video_enabled is False

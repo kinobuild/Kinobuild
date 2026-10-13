@@ -638,7 +638,7 @@ export default function SsoPanel() {
                             },
                           ]}
                         >
-                          <Input placeholder="https://octop.example.com" />
+                          <Input placeholder="https://sso.example.com" />
                         </Form.Item>
                       ),
                     },

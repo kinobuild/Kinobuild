@@ -174,3 +174,74 @@ async def test_fetch_models_server_error_friendly() -> None:
     assert result["ok"] is False
     assert "temporarily unavailable" in result["error"].lower()
     assert "503" not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_models_keeps_capability_metadata() -> None:
+    """Vision modalities and context limits from ``/models`` must survive.
+
+    Providers advertise ``input_modalities``/``context_window`` here. Dropping
+    them made every synced model look text-only, so a vision model was never
+    offered image input and its real context window was lost.
+    """
+    response = _mock_response(
+        200,
+        {
+            "data": [
+                {
+                    "id": "deepseek-flash",
+                    "name": "DeepSeek-V4.1-Flash",
+                    "context_window": 1048576,
+                    "max_output_tokens": 393216,
+                    "input_modalities": ["text", "image"],
+                    "output_modalities": ["text"],
+                },
+                {
+                    "id": "deepseek-v4-pro",
+                    "name": "DeepSeek-V4-Pro",
+                    "context_window": 1048576,
+                    "input_modalities": ["text"],
+                },
+            ]
+        },
+    )
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("octop.infra.agents.providers.probe.httpx.AsyncClient", return_value=mock_client):
+        result = await fetch_openai_compatible_models(
+            base_url="https://api.example.com/v1",
+            api_key="sk-test",
+        )
+
+    assert result["ok"] is True
+    by_id = {m["id"]: m for m in result["models"]}
+
+    flash = by_id["deepseek-flash"]
+    assert flash["name"] == "DeepSeek-V4.1-Flash"
+    assert flash["input"] == ["text", "image"]
+    assert flash["context_window"] == 1048576
+    assert flash["max_output_tokens"] == 393216
+
+    pro = by_id["deepseek-v4-pro"]
+    assert pro["input"] == ["text"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_models_falls_back_to_id_when_metadata_absent() -> None:
+    """Entries without capability fields keep the minimal ``{id, name}`` shape."""
+    response = _mock_response(200, {"data": [{"id": "plain-model"}]})
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("octop.infra.agents.providers.probe.httpx.AsyncClient", return_value=mock_client):
+        result = await fetch_openai_compatible_models(
+            base_url="https://api.example.com/v1",
+            api_key="sk-test",
+        )
+
+    assert result["models"] == [{"id": "plain-model", "name": "plain-model"}]

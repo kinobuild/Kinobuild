@@ -11,6 +11,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from octop.infra.agents.settings.openai_media_provider import register_openai_media_provider
 from octop.infra.connectors.crypto import decrypt_credentials, encrypt_credentials
 from octop.infra.db.repos.secrets import SecretRepo
 from octop.infra.db.repos.settings import SettingsRepo
@@ -19,7 +20,11 @@ from octop.infra.errors import ErrorCode, OctopError
 if TYPE_CHECKING:
     from octop_harness import MediaGenerationConfig
 
-MediaProviderName = Literal["volcengine", "dashscope", "minimax"]
+# 把 OpenAI 兼容适配器注册进 harness 注册表。必须在任何 create_media_manager 之前
+# 执行，所以放在本模块的导入期——本模块是所有媒体路径的必经入口。
+register_openai_media_provider()
+
+MediaProviderName = Literal["volcengine", "dashscope", "minimax", "openai"]
 MediaTestKind = Literal["image", "video"]
 
 DEFAULT_PROVIDER_ID = "volcengine-default"
@@ -54,11 +59,13 @@ class MediaProviderPreset:
 
     @property
     def default_image_model(self) -> str:
-        return self.image_models[0]
+        # 预设允许只做单一模态：只做视频（或只做图像）的供应商会给一个空元组。
+        # 直接取 [0] 会在保存设置时抛 IndexError，表现成「点保存 500」。
+        return self.image_models[0] if self.image_models else ""
 
     @property
     def default_video_model(self) -> str:
-        return self.video_models[0]
+        return self.video_models[0] if self.video_models else ""
 
 
 MEDIA_PROVIDER_PRESETS: dict[MediaProviderName, MediaProviderPreset] = {
@@ -104,6 +111,17 @@ MEDIA_PROVIDER_PRESETS: dict[MediaProviderName, MediaProviderPreset] = {
         base_url="https://api.minimax.cn",
         image_models=("image-01", "image-01-live"),
         video_models=("MiniMax-H3", "MiniMax-H3-Max"),
+    ),
+    "openai": MediaProviderPreset(
+        provider="openai",
+        display_name="OpenAI 兼容中转站",
+        # 中转站的端点各不相同，这里只给一个占位；实际使用必须改成自己的地址。
+        base_url="https://api.openai.com/v1",
+        # 中转站挂了什么模型无法预知，列几个常见的 OpenAI 图像模型作起点；
+        # image_model 本身是自由字符串，用户可以直接填中转站公布的模型名。
+        image_models=("gpt-image-1", "gpt-image-2.5", "dall-e-3"),
+        # 该适配器只做图像；视频留空，前端据此不展示视频选项。
+        video_models=(),
     ),
 }
 

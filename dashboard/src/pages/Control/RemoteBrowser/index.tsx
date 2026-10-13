@@ -1099,7 +1099,7 @@ export default function RemoteBrowserPage({
                 icon={<Copy size={14} />}
                 onClick={() => void handleCopyInstallLog()}
               >
-                {t("common.copyErrorForOctop", "复制错误信息")}
+                {t("common.copyErrorForKinoGuild", "复制错误信息")}
               </Button>
             </div>
             {renderInstallLog(180, undefined, t("common.installLogEmpty"))}
@@ -1112,7 +1112,7 @@ export default function RemoteBrowserPage({
               }}
             >
               {t(
-                "common.askOctopHint",
+                "common.askKinoGuildHint",
                 "若安装失败，可复制下方错误信息发给 Octop 排查。",
               )}
             </div>

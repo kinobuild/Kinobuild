@@ -56,8 +56,11 @@ import {
 } from "../pages/Admin/Users/ProfileAvatar";
 import styles from "./AvatarDropdown.module.less";
 
-const GITHUB_URL = "https://github.com/TencentCloud/Octop";
-const HELP_FEEDBACK_URL = "https://octop.cloud";
+// Help and project links belong to whoever ships the build. Hard-coding upstream's
+// site and repository sent end users — and anyone watching a demo — straight to a
+// third party's brand pages. Leave them unset and the menu items disappear.
+const HELP_FEEDBACK_URL = import.meta.env.VITE_HELP_FEEDBACK_URL ?? "";
+const PROJECT_URL = import.meta.env.VITE_PROJECT_URL ?? "";
 const APP_OAUTH_KINDS = new Set(["feishu", "dingtalk", "wecom"]);
 
 const PASSWORD_FIELD_ICON_PROPS = {
@@ -369,27 +372,31 @@ export default function AvatarDropdown({
         <ThemeSwitcher compact />
       </div>
 
-      <a
-        className={styles.menuItem}
-        href={HELP_FEEDBACK_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => setMenuOpen(false)}
-      >
-        <CircleHelp size={16} strokeWidth={1.8} />
-        <span>{t("account.helpFeedback")}</span>
-      </a>
+      {HELP_FEEDBACK_URL ? (
+        <a
+          className={styles.menuItem}
+          href={HELP_FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMenuOpen(false)}
+        >
+          <CircleHelp size={16} strokeWidth={1.8} />
+          <span>{t("account.helpFeedback")}</span>
+        </a>
+      ) : null}
 
-      <a
-        className={styles.menuItem}
-        href={GITHUB_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => setMenuOpen(false)}
-      >
-        <Github size={16} strokeWidth={1.8} />
-        <span>{t("account.projectUrl")}</span>
-      </a>
+      {PROJECT_URL ? (
+        <a
+          className={styles.menuItem}
+          href={PROJECT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMenuOpen(false)}
+        >
+          <Github size={16} strokeWidth={1.8} />
+          <span>{t("account.projectUrl")}</span>
+        </a>
+      ) : null}
 
       {onCustomizeNav ? (
         <button

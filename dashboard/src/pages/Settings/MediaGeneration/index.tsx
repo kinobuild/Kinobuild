@@ -211,16 +211,21 @@ export function MediaGenerationSettingsPanel() {
       if (!config) return null;
       const preset = presetMap.get(providerName);
       if (!preset) return null;
+      // 能力开关必须跟着预设的模型列表走：有的适配器只做图像（没有视频模型），
+      // 这里若写死 video_enabled=true，弹窗就会显示一个「必填但无从填写」的视频模型
+      // 字段，保存时表单校验失败并被静默吞掉——表现就是「点保存没反应」。
+      const supportsImage = preset.image_models.length > 0;
+      const supportsVideo = preset.video_models.length > 0;
       return {
         id: nextProviderId(providerName, config.providers),
         provider: providerName,
         display_name: preset.display_name,
         enabled: true,
         base_url: preset.base_url,
-        image_enabled: true,
-        video_enabled: true,
-        image_model: preset.image_models[0] || "",
-        video_model: preset.video_models[0] || "",
+        image_enabled: supportsImage,
+        video_enabled: supportsVideo,
+        image_model: preset.image_models[0] ?? "",
+        video_model: preset.video_models[0] ?? "",
         api_key_set: false,
         configured: false,
         api_key: "",
@@ -272,14 +277,19 @@ export function MediaGenerationSettingsPanel() {
     if (!editingProvider) return null;
     try {
       const values = await form.validateFields();
+      // 必须容忍字段缺席：只做图像的适配器（如 OpenAI 兼容中转站）不渲染视频字段，
+      // 而未注册的 Form.Item 不会出现在 validateFields() 的返回值里。直接
+      // `values.video_model.trim()` 会抛 TypeError，被下面的 catch 吞掉，
+      // 表现就是「点保存毫无反应」——连一句提示都没有。
+      const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
       return {
         ...editingProvider,
         ...values,
-        display_name: values.display_name.trim(),
-        base_url: values.base_url.trim(),
-        image_model: values.image_model.trim(),
-        video_model: values.video_model.trim(),
-        api_key: values.api_key.trim(),
+        display_name: text(values.display_name),
+        base_url: text(values.base_url),
+        image_model: text(values.image_model),
+        video_model: text(values.video_model),
+        api_key: text(values.api_key),
       };
     } catch {
       return null;
@@ -289,7 +299,12 @@ export function MediaGenerationSettingsPanel() {
   const handleSaveProvider = async () => {
     if (!config) return;
     const provider = await providerFromForm();
-    if (!provider) return;
+    if (!provider) {
+      // 表单校验失败时不能静默 return：字段可能在滚动区外，用户只会看到
+      // 「点了保存没反应」。明确提示一次。
+      message.error(t("mediaGeneration.validationFailed"));
+      return;
+    }
     const providers =
       providerModalMode === "create"
         ? [...config.providers, provider]

@@ -92,6 +92,7 @@ async def test_media_provider_presets_include_all_p0_adapters(
         "volcengine",
         "dashscope",
         "minimax",
+        "openai",
     ]
     presets = {item["provider"]: item for item in response.json()}
     assert "doubao-seedream-5-0-pro-260628" in presets["volcengine"]["image_models"]
@@ -100,3 +101,6 @@ async def test_media_provider_presets_include_all_p0_adapters(
     assert "qwen-image-3.0-pro" in presets["dashscope"]["image_models"]
     assert "wan3.0-video-prime" in presets["dashscope"]["video_models"]
     assert "image-01-live" in presets["minimax"]["image_models"]
+    # OpenAI 兼容适配器只做图像，所以预设里不该出现视频模型。
+    assert presets["openai"]["image_models"], "openai 预设应给出可用的图像模型起点"
+    assert presets["openai"]["video_models"] == []

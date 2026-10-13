@@ -2,10 +2,14 @@
  * Service Worker registration and lifecycle management.
  *
  * Production (all browsers including Chrome / Safari):
- *   - Register `/sw.js` with workbox `skipWaiting: false` (vite.config).
- *   - Never auto `location.reload()` on `controllerchange` — that pattern
- *     caused full-page refresh loops (especially WebKit). Updates apply only
- *     when the user clicks the banner → `applyUpdate()`.
+ *   - Register `/sw.js` with workbox `skipWaiting: true` (vite.config), so a new
+ *     deploy takes control on its own. Parking the worker in "waiting" meant a
+ *     dismissed banner left the old worker serving the old precache on every
+ *     reload — a rebranded asset could stay on screen forever.
+ *   - Never auto `location.reload()` on `controllerchange` — that pattern caused
+ *     full-page refresh loops (especially WebKit). The banner's `applyUpdate()`
+ *     is the only thing that reloads; with skipWaiting on it is just an explicit
+ *     "reload now" (the worker is usually already active, so `waiting` is null).
  *
  * Dev:
  *   - Do not register. Clear any leftover production SW on the same origin
