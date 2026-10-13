@@ -89,11 +89,31 @@ export function extractWorkspaceRel(path: string): string | null {
  * those as ``file:///octop-logo.png`` makes the backend look on the host root
  * and returns NOT_FOUND. Prefer workspace-relative keys whenever we can.
  */
+/**
+ * Strip markdown / quoting wrappers that ride along when a path is lifted out of
+ * a model reply (`` `outbound/a.png` ``, `"inbound/b.png"`, `<file:///c.png>`).
+ *
+ * Those characters are not part of the path. Leaving them in makes the preview
+ * request 404 — the backend looks for a file literally named  * `` `outbound/a.png``.
+ */
+export function stripPathWrappers(path: string): string {
+  let out = path.trim();
+  // Repeat: authors nest wrappers ("`'a.png'`").
+  for (let i = 0; i < 3; i += 1) {
+    const next = out
+      .replace(/^[\s`'"<([{]+/, "")
+      .replace(/[\s`'"\])}>]+$/, "");
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
 export function toMediaPreviewSource(
   path: string,
   options?: { agentId?: string | null; fromWorkspace?: boolean },
 ): string {
-  const trimmed = path.trim();
+  const trimmed = stripPathWrappers(path);
   if (!trimmed) return trimmed;
 
   let posix = trimmed.replace(/\\/g, "/");

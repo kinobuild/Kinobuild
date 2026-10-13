@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  agentAttachmentAccessUrl,
-  agentMediaPreviewUrl,
-  canonicalizeMediaApiUrl,
-  isHostAbsoluteMediaPath,
-  needsAuthBlobFetch,
-  parseStructuredToolOutput,
-  parseToolExecutionFeedback,
-  toMediaPreviewSource,
-  workspaceDownloadUrl,
-} from "./toolMediaBlocks";
+import { agentAttachmentAccessUrl, agentMediaPreviewUrl, canonicalizeMediaApiUrl, isHostAbsoluteMediaPath, needsAuthBlobFetch, parseStructuredToolOutput, parseToolExecutionFeedback, stripPathWrappers, toMediaPreviewSource, workspaceDownloadUrl } from "./toolMediaBlocks";
 
 describe("workspaceDownloadUrl", () => {
   it("keeps host-absolute paths as-is", () => {
@@ -200,5 +190,36 @@ describe("agentAttachmentAccessUrl", () => {
     expect(
       agentAttachmentAccessUrl("a1", "inbound/x.pdf", "application/pdf"),
     ).toContain("/workspace/download?");
+  });
+});
+
+describe("stripPathWrappers", () => {
+  it("removes markdown backticks that ride along with a model-quoted path", () => {
+    expect(stripPathWrappers("`outbound/a.png`")).toBe("outbound/a.png");
+    expect(stripPathWrappers("`/Users/x/.octop/agents/A/generated/i.png")).toBe(
+      "/Users/x/.octop/agents/A/generated/i.png",
+    );
+  });
+
+  it("removes quotes, brackets and nesting", () => {
+    expect(stripPathWrappers('"inbound/b.png"')).toBe("inbound/b.png");
+    expect(stripPathWrappers("<file:///c.png>")).toBe("file:///c.png");
+    expect(stripPathWrappers("`'d.png'`")).toBe("d.png");
+  });
+
+  it("leaves a clean path untouched", () => {
+    expect(stripPathWrappers("outbound/a.png")).toBe("outbound/a.png");
+    expect(stripPathWrappers("  inbound/b.mp4  ")).toBe("inbound/b.mp4");
+  });
+
+  it("does not eat meaningful trailing characters", () => {
+    expect(stripPathWrappers("outbound/v1.2.png")).toBe("outbound/v1.2.png");
+  });
+});
+
+describe("toMediaPreviewSource strips wrappers end to end", () => {
+  it("resolves a backtick-wrapped path to the same source as the bare one", () => {
+    const bare = toMediaPreviewSource("inbound/a.png", { agentId: "AG1" });
+    expect(toMediaPreviewSource("`inbound/a.png`", { agentId: "AG1" })).toBe(bare);
   });
 });

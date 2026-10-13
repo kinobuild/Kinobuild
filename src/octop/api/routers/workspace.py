@@ -424,6 +424,11 @@ async def write_doc(
     return {"path": path, "size": len(data)}
 
 
+# Wrapper characters that are never part of a media path but ride along when the
+# source is lifted out of a model reply (markdown backticks, quotes, brackets).
+_SOURCE_WRAPPERS = " \t\n\r`\"'<>()[]{}"
+
+
 @router.get(
     "/agents/{agent_id}/media/preview",
     summary="Preview image or video",
@@ -438,6 +443,10 @@ async def preview_media(
     server: Any = Depends(get_server),
 ) -> StreamingResponse:
     """Stream an image or video inline for dashboard tool-result previews."""
+    # The source is usually lifted out of a model reply, where it may still carry
+    # markdown backticks or quotes. Strip them instead of 404ing on a filename
+    # that literally starts with a backtick.
+    source = source.strip(_SOURCE_WRAPPERS)
     path_agent = _agent_id_from_media_source(source)
     effective_agent = path_agent or agent_id
     ws = await require_running_workspace(effective_agent, user=user, as_user=as_user, server=server)
