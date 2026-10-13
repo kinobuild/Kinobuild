@@ -351,3 +351,63 @@ async def test_role_rejects_unknown_policy_name(env):
         },
     )
     assert resp.status_code == 400, resp.text
+
+
+async def test_create_role_accepts_caller_role_id(env):
+    c, _srv, auth = env
+    created = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={
+            "user_role_id": "data_analyst",
+            "user_role_name": "分析师",
+            "permissions": ["browser"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["user_role_id"] == "data_analyst"
+
+    middle = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={"user_role_id": "a__b", "user_role_name": "双下划线", "permissions": []},
+    )
+    assert middle.status_code == 201, middle.text
+    assert middle.json()["user_role_id"] == "a__b"
+
+    for role_id in ("_analyst", "analyst_", "data-analyst", "data1", "分析"):
+        rejected = await c.post(
+            "/api/users/roles",
+            headers=auth,
+            json={
+                "user_role_id": role_id,
+                "user_role_name": f"无效{role_id}",
+                "permissions": [],
+            },
+        )
+        assert rejected.status_code == 400, rejected.text
+        assert rejected.json()["error"]["code"] == "USER_ROLE_ID_INVALID"
+
+    taken = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={
+            "user_role_id": "data_analyst",
+            "user_role_name": "另一个分析师",
+            "permissions": [],
+        },
+    )
+    assert taken.status_code == 409, taken.text
+    assert taken.json()["error"]["code"] == "USER_ROLE_ID_TAKEN"
+
+    builtin = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={
+            "user_role_id": "admin",
+            "user_role_name": "另一个管理员",
+            "permissions": [],
+        },
+    )
+    assert builtin.status_code == 409, builtin.text
+    assert builtin.json()["error"]["code"] == "USER_ROLE_ID_TAKEN"

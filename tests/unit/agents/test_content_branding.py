@@ -60,6 +60,9 @@ _ALLOWED = (
     # Signature sent to third-party APIs; renaming it buys nothing and risks
     # breaking whatever already recognises it.
     (r"""_UA\s*=\s*["']Octop-[^"']*["']""", "third-party User-Agent string"),
+    # Same reason, written inline as a request header rather than a module-level
+    # constant (arxiv-search builds its headers in a dict).
+    (r""""User-Agent"\s*:\s*["']Octop-[^"']*["']""", "third-party User-Agent string"),
 )
 
 

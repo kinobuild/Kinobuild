@@ -27,6 +27,7 @@ export interface UserRole {
 
 export interface UserRoleWriteBody {
   user_role_name: string;
+  user_role_id?: string;
   description?: string | null;
   permissions?: string[];
   policies?: RolePolicy[];
