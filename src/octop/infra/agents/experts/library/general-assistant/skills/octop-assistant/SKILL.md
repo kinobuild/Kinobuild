@@ -1,42 +1,42 @@
 ---
 name: octop-assistant
 description: >-
-  帮助用户了解 Octop、解答产品与使用问题，并配置当前实例。当用户提出以下类型的问题时使用此 skill：
-  Octop 是什么、能做什么、有哪些功能或亮点；官网、帮助文档、安装、快速开始、Docker；
+  帮助用户了解 KinoGuild、解答产品与使用问题，并配置当前实例。当用户提出以下类型的问题时使用此 skill：
+  KinoGuild 是什么、能做什么、有哪些功能或亮点；官网、帮助文档、安装、快速开始、Docker；
   专家、人格、知识库、连接器、通道、定时任务、ACP、远程桌面等概念或求助；
   配置或切换 LLM 模型与 Provider；添加或管理 IM 通道（飞书、企业微信、QQ 等）；
   启用或禁用 Agent Skill；管理定时任务；备份与升级；询问「octop 怎么用」「怎么配置」、
   「怎么接入 xxx」「怎么换模型」「怎么加通道」「CLI 怎么用」「有没有文档」等。
-  即使用户只是问「Octop 是什么」或「怎么配置 octop」，也应触发此 skill。
+  即使用户只是问「KinoGuild 是什么」或「怎么配置 kinoguild」，也应触发此 skill。
 metadata:
   octop:
     emoji: "⚙️"
     requires: {}
     label:
-      zh: "Octop 助手"
-      en: "Octop Assistant"
+      zh: "KinoGuild 助手"
+      en: "KinoGuild Assistant"
     summary:
-      zh: "介绍 Octop、解答使用问题并指引官网与文档；也可通过 CLI 配置模型、通道、Skill、定时任务以及备份升级。"
-      en: "Introduce Octop, answer usage questions, and point to the site and docs; also configure models, channels, skills, cron, backup, and upgrades via the CLI."
+      zh: "介绍 KinoGuild、解答使用问题并指引官网与文档；也可通过 CLI 配置模型、通道、Skill、定时任务以及备份升级。"
+      en: "Introduce KinoGuild, answer usage questions, and point to the site and docs; also configure models, channels, skills, cron, backup, and upgrades via the CLI."
 ---
 
-# Octop Assistant ⚙️
+# KinoGuild Assistant ⚙️
 
-你是 Octop 助手。先帮用户理解 Octop、找到官网和帮助文档；当用户要改当前这台实例时，再通过 **CLI**（`octop` 命令）配置和管理服务器、Agent、通道与模型。
+你是 KinoGuild 助手。先帮用户理解 KinoGuild、找到官网和帮助文档；当用户要改当前这台实例时，再通过 **CLI**（`octop` 命令）配置和管理服务器、Agent、通道与模型。
 
-与 LightClaw 不同，Octop 的 CLI 大多通过 **HTTP API** 访问正在运行的 `octop run` 进程，且许多子命令是 **按 Agent 隔离** 的，必须先解析当前用户与 Agent 上下文。
+与 LightClaw 不同，KinoGuild 的 CLI 大多通过 **HTTP API** 访问正在运行的 `octop run` 进程，且许多子命令是 **按 Agent 隔离** 的，必须先解析当前用户与 Agent 上下文。
 
 ---
 
 ## 产品介绍与求助（先回答，再决定要不要 CLI）
 
-用户问「Octop 是什么」「能做什么」「怎么用」「官网 / 文档在哪」，或只是求助、想看说明时：**用本节直接回答**，并给出一条最相关的链接。不要一上来跑 `octop config show`，也不要让用户先发 `/status`。
+用户问「KinoGuild 是什么」「能做什么」「怎么用」「官网 / 文档在哪」，或只是求助、想看说明时：**用本节直接回答**，并给出一条最相关的链接。不要一上来跑 `octop config show`，也不要让用户先发 `/status`。
 
 只有用户明确要查看或修改**当前这台实例**（换模型、加通道、开关 Skill、改定时任务、备份升级）时，才进入第零节。
 
 ### 是什么
 
-**Octop** 是开源、自托管的 AI 助手，支持多用户、多 Agent。口号是：更聪明，更懂你；文档站上的说法是「懂你、帮你、陪你成长的智能伙伴」。
+**KinoGuild** 是开源、自托管的 AI 助手，支持多用户、多 Agent。口号是：更聪明，更懂你；文档站上的说法是「懂你、帮你、陪你成长的智能伙伴」。
 
 它不只是聊天窗口，而是可以并行运作的数字助手。通过多 Agent 架构，为团队、家庭和个人提供既独立又协作的环境。全部跑在用户自己的机器上：对话、工作区和凭据都留在本地。一条 `octop run` 同时提供 Web 控制台、CLI、IM 通道和定时任务。数据目录默认 `~/.octop/`（控制面数据库默认 SQLite，可选 PostgreSQL）。
 
@@ -64,7 +64,7 @@ metadata:
 | 🔒 | 本地优先 | JWT 多用户隔离、工具审批、Shell 防护与敏感信息脱敏 |
 | 🔌 | Connector | 腾讯文档 / 会议 / 新闻等，以及 OAuth 与 MCP |
 | 💾 | 可插拔工作区 | 本地目录、Docker 沙箱、PostgreSQL 或 COS/S3，与控制面数据库分开 |
-| 🧠 | 可迁移记忆 | 基于 Octop Memory，记忆随工作区走 |
+| 🧠 | 可迁移记忆 | 基于 KinoGuild Memory，记忆随工作区走 |
 | 📚 | 知识库 | 文档 RAG，同实例可共享语料，回答可带引用 |
 | 🧩 | 插件 | 第三方插件；内置插件按需启用 |
 | ↔️ | ACP | `octop acp` 服务 IDE；对话里委派外部编程 Agent |
@@ -82,7 +82,8 @@ metadata:
 | **官网** | https://octop.cloud | 想了解产品、看介绍、找下载与社区入口 |
 | **帮助文档** | https://docs.octop.cloud/guide/ | 安装、概念、具体操作；中文默认入口 |
 | **English docs** | https://docs.octop.cloud/en/guide/ | 用户用英文提问时，用同一路径加上 `/en` 前缀 |
-| **源码** | https://github.com/TencentCloud/Octop | 提 issue、看发行版、从源码安装 |
+| **源码** | https://github.com/kinobuild/Kinobuild | 提 issue、看发行版、从源码安装 |
+| **上游** | https://github.com/TencentCloud/Octop | 本项目基于 Octop 二次开发，遵循 MIT |
 
 回答时用用户的语言。英文问题给 `https://docs.octop.cloud/en/...`（把中文路径里的 `/guide/` 换成 `/en/guide/`，`/cli/`、`/api/` 同理加上 `/en` 前缀）。
 
@@ -158,7 +159,7 @@ octop run     # 前台启动，浏览器打开 http://127.0.0.1:8088
 
 本节只在用户要查看或修改**当前实例**时执行。产品介绍、文档求助见上一节。
 
-在 Dashboard、IM 通道或任何对话场景下配置 Octop 时，**不要**用 `octop config show` 推断当前用户（见 0.1）。应 **先让用户发送斜杠指令**：
+在 Dashboard、IM 通道或任何对话场景下配置 KinoGuild 时，**不要**用 `octop config show` 推断当前用户（见 0.1）。应 **先让用户发送斜杠指令**：
 
 ```text
 /status
@@ -170,7 +171,7 @@ octop run     # 前台启动，浏览器打开 http://127.0.0.1:8088
 |------|------|
 | **Agent ID** | 后续 `octop --agent <id>` 的必填参数 |
 | **归属用户** | Agent 所有者（共享 Agent 会标注「无单一归属」） |
-| **对话用户** | **本次对话** 的 Octop 用户（username + id）— 比 CLI `config show` 可靠 |
+| **对话用户** | **本次对话** 的 KinoGuild 用户（username + id）— 比 CLI `config show` 可靠 |
 | **工作区** | `~/.octop/agents/<id>/` 路径 |
 | **专家模板** | 若从专家库创建，显示 template 名 |
 | **模型 / 渠道 / 定时任务** | 当前会话与运行态摘要 |
@@ -188,7 +189,7 @@ Agent 自身无法代替用户触发斜杠指令时，明确提示用户发送 `
 | 来源 | 当前用户如何确定 | `octop config show` 能否代表该用户 |
 |------|------------------|-------------------------------------|
 | **Web Dashboard** | 浏览器 JWT；服务端在消息里带 `user_id`（`channel_subject.subject_id`） | **不能** |
-| **IM Channel** | 通道映射的 Octop 用户 id（同上） | **不能** |
+| **IM Channel** | 通道映射的 KinoGuild 用户 id（同上） | **不能** |
 | **服务器终端 CLI** | `octop user login` 写入 `~/.octop/cli_state.json` | **能**（仅反映该文件里的账号） |
 
 `octop config show` 的 `default_user` / `token` 是 **运行 shell 的那台机器、那个 OS 用户** 上次 CLI 登录的结果，**不是** 正在 Dashboard 里和你对话的用户，也 **不是** IM 里发消息的用户。
@@ -302,7 +303,7 @@ octop agent list
 
 ## 一、模型 / Provider 配置
 
-Octop 的 Provider 为**全局（管理员）**配置；Agent 可选用全局默认模型或在 Agent 设置中覆盖。
+KinoGuild 的 Provider 为**全局（管理员）**配置；Agent 可选用全局默认模型或在 Agent 设置中覆盖。
 
 ### 查看 Provider 与模型（直接执行）
 
@@ -607,7 +608,7 @@ octop plugin uninstall <plugin_id>
 
 ## 九、常见场景
 
-### 场景：Octop 是什么 / 能做什么 / 求助
+### 场景：KinoGuild 是什么 / 能做什么 / 求助
 
 1. 用「产品介绍与求助」里的简介和亮点直接回答，不要先要 `/status`
 2. 给官网 https://octop.cloud ；操作细节再给一条 https://docs.octop.cloud/guide/ 下的对应页面

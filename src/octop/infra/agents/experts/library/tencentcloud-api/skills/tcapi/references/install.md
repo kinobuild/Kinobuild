@@ -1,8 +1,8 @@
 # 安装 TCCLI
 
-**首选：装进 Octop 自带的 Python 虚拟环境（venv）**——与 Octop 运行环境一致、版本可控、不污染系统 Python、无需 sudo。Octop 专家的 Agent 命令执行时继承该环境。
+**首选：装进 KinoGuild 自带的 Python 虚拟环境（venv）**——与 KinoGuild 运行环境一致、版本可控、不污染系统 Python、无需 sudo。KinoGuild 专家的 Agent 命令执行时继承该环境。
 
-**定位 Octop venv**（通过 octop 主进程的工作目录）：
+**定位 KinoGuild venv**（通过 octop 主进程的工作目录）：
 
 ```sh
 OCTOP_PID=$(pgrep -f '\.venv/bin/octop run' | head -1)
@@ -12,7 +12,7 @@ OCTOP_ROOT=$([ -n "$OCTOP_PID" ] && readlink -f /proc/$OCTOP_PID/cwd || echo /wo
 **安装方式（按优先级）**：
 
 ```sh
-# 方式一（推荐）：uv 装进 Octop venv
+# 方式一（推荐）：uv 装进 KinoGuild venv
 uv pip install --python "$OCTOP_ROOT/.venv/bin/python3" tccli
 
 # 方式二：无 uv 时，用 venv 自带 pip（需先 ensurepip）

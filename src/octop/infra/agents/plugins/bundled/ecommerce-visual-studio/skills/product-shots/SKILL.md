@@ -12,12 +12,12 @@ metadata:
     emoji: "🧭"
 ---
 
-> **Octop 适配说明 — 本技能已改造，请先读这一段。**
+> **KinoGuild 适配说明 — 本技能已改造，请先读这一段。**
 >
-> 原技能用外部 CLI 出图。在 Octop 里**一律改用内置 `generate_image` 工具**，不要把下面的
+> 原技能用外部 CLI 出图。在 KinoGuild 里**一律改用内置 `generate_image` 工具**，不要把下面的
 > 示例命令当真去执行、也不要为它装 CLI 或配 `*_API_KEY` 环境变量。
 >
-> | 原技能写法 | Octop 对应 |
+> | 原技能写法 | KinoGuild 对应 |
 > |---|---|
 > | `--prompt '...'` | `prompt="..."` |
 > | `--images a.jpg b.jpg` | `reference_images=["a.jpg", "b.jpg"]` |

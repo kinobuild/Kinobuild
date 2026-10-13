@@ -4,7 +4,7 @@ description: "出图引擎。把一个 prompt 转成一次内置 generate_image 
 
 license: MIT
 metadata:
-  author: motiful (adapted for Octop)
+  author: motiful (adapted for KinoGuild)
   source: product-shots ecosystem
   skill_id: product_shots_image_gen
   adapter: octop-native
@@ -13,7 +13,7 @@ metadata:
     emoji: "⚙️"
 ---
 
-# Image Gen — Octop 原生出图引擎
+# Image Gen — KinoGuild 原生出图引擎
 
 其他 product-shots 技能（main-image / detail-page / ad-creative / social-post / multi-angle）
 最终都会走到这一步：**把写好的 prompt 交给内置 `generate_image` 工具**。
@@ -33,9 +33,9 @@ generate_image(
 )
 ```
 
-**参数映射**（生态内契约 → Octop 工具）：
+**参数映射**（生态内契约 → KinoGuild 工具）：
 
-| 生态契约里的字段 | Octop 工具参数 | 说明 |
+| 生态契约里的字段 | KinoGuild 工具参数 | 说明 |
 |---|---|---|
 | `prompt` | `prompt` | 直接传 |
 | `negative_prompt` | 合并进 `prompt` | 写成 `。Avoid: a, b, c` 追加在末尾 |
