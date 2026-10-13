@@ -23,6 +23,7 @@ from octop.infra.errors import ErrorCode, OctopError
 from octop.infra.users.identity import User
 from octop.infra.users.permissions import ALL_PERMISSION_KEYS, validate_permission_keys
 from octop.infra.users.resource_policy import (
+    KNOWN_POLICIES,
     POLICY_IMAGE_QUOTA,
     POLICY_MAX_AGENTS,
     POLICY_TOKEN_QUOTA,
@@ -38,13 +39,6 @@ from octop.infra.users.resource_policy import (
 )
 
 router = APIRouter()
-
-_KNOWN_POLICIES = {
-    POLICY_WORKSPACE_ROOT_DIR,
-    POLICY_TOKEN_QUOTA,
-    POLICY_IMAGE_QUOTA,
-    POLICY_MAX_AGENTS,
-}
 
 
 class PolicyItem(BaseModel):
@@ -121,7 +115,7 @@ def _policies_from_fields(
 
 
 def _policies_from_items(items: list[PolicyItem]) -> list[tuple[str, str]]:
-    unknown = sorted({item.name for item in items if item.name not in _KNOWN_POLICIES})
+    unknown = sorted({item.name for item in items if item.name not in KNOWN_POLICIES})
     if unknown:
         raise OctopError(
             ErrorCode.FORBIDDEN,

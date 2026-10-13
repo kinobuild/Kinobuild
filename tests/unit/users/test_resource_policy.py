@@ -298,3 +298,45 @@ def test_migration_rebuilds_legacy_kv_table(tmp_path: Path) -> None:
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(user_policies)")}
     assert "key" not in cols
     assert "policy_id" in cols
+
+
+def test_every_known_policy_is_wired_through_the_stack() -> None:
+    """A policy name alone is not a feature — every layer must know it.
+
+    Regression guard: ``image_quota`` was added to this module and to the
+    dashboard, but the role router kept its own whitelist that was never
+    updated. Admins saw "没有权限" (no permission) when saving a role, which
+    pointed at the wrong subsystem entirely.
+
+    Adding a name to ``KNOWN_POLICIES`` without wiring it up now fails here.
+    """
+    import inspect
+
+    from octop.infra.users.manager import UserManager
+    from octop.infra.users.resource_policy import KNOWN_POLICIES, public_policy_fields
+
+    assert KNOWN_POLICIES, "expected at least one policy"
+
+    # 1) every name is exposed on the HTTP surface
+    exposed = public_policy_fields(dict.fromkeys(sorted(KNOWN_POLICIES), "1"))
+    missing_from_reader = sorted(set(KNOWN_POLICIES) - set(exposed))
+    assert not missing_from_reader, f"{missing_from_reader} missing from public_policy_fields"
+
+    # 2) every name can be written through the setter
+    params = set(inspect.signature(UserManager.set_resource_policy).parameters)
+    missing_from_setter = sorted(set(KNOWN_POLICIES) - params)
+    assert not missing_from_setter, f"{missing_from_setter} missing from set_resource_policy"
+
+
+def test_role_router_has_no_private_policy_whitelist() -> None:
+    """The router must consume the shared name set, not its own copy.
+
+    A duplicate list is what let the two definitions drift apart.
+    """
+    from octop.api.routers import user_roles
+    from octop.infra.users.resource_policy import KNOWN_POLICIES
+
+    assert not hasattr(user_roles, "_KNOWN_POLICIES"), (
+        "role router must use KNOWN_POLICIES from resource_policy"
+    )
+    assert user_roles.KNOWN_POLICIES is KNOWN_POLICIES

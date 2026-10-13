@@ -20,6 +20,22 @@ POLICY_TOKEN_QUOTA = "token_quota"
 POLICY_IMAGE_QUOTA = "image_quota"
 POLICY_MAX_AGENTS = "max_agents"
 
+#: Every policy name the HTTP surface accepts, in one place.
+#:
+#: Callers must not keep a second copy of this list: a hand-maintained duplicate
+#: in the role router previously omitted a newly added policy, which surfaced to
+#: admins as a bogus "no permission" error. ``tests/unit/users/test_resource_policy.py``
+#: asserts each name here is wired through the reader and the setter, so adding a
+#: policy without finishing the job fails a test instead of a user request.
+KNOWN_POLICIES: frozenset[str] = frozenset(
+    {
+        POLICY_WORKSPACE_ROOT_DIR,
+        POLICY_TOKEN_QUOTA,
+        POLICY_IMAGE_QUOTA,
+        POLICY_MAX_AGENTS,
+    }
+)
+
 
 def active_policy_value(row: Any) -> str | None:
     """Return ``value`` when the policy row exists and is enabled."""
