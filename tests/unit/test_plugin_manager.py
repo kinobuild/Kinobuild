@@ -404,3 +404,81 @@ def test_set_enabled_preserves_unrelated_keys(tmp_path: Path) -> None:
     assert data["bind_host"] == "0.0.0.0"
     assert data["database"] == {"driver": "postgresql", "host": "db.internal"}
     assert data["plugins"]["echo-tool"]["enabled"] is False
+
+
+def _sync_fixture(tmp_path: Path, *, version: str, body: str) -> tuple[Any, Any]:
+    """Build a (workspace, manager+plugin) pair for skill-sync tests."""
+    from types import SimpleNamespace
+
+    from deepagents.backends.local_shell import LocalShellBackend
+    from octop_harness.backends.workspace import BackendWorkspace
+
+    skill_root = tmp_path / "plugin-src" / "skills"
+    skill_dir = skill_root / "demo-skill"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text(body, encoding="utf-8")
+
+    ws_dir = tmp_path / "workspace"
+    ws_dir.mkdir(parents=True, exist_ok=True)
+    workspace = BackendWorkspace(
+        LocalShellBackend(root_dir=str(ws_dir), virtual_mode=False), ws_dir
+    )
+
+    plugin = SimpleNamespace(
+        manifest=SimpleNamespace(id="demo-plugin", version=version),
+        skills_dir=skill_root,
+    )
+    manager = PluginManager(plugins_dir=tmp_path / "plugins", config_path=tmp_path / "plugins.json")
+    return workspace, (manager, plugin)
+
+
+def test_plugin_skill_sync_records_version_and_republishes_on_bump(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A plugin update must reach an agent that already synced once.
+
+    Previously the sync skipped any skill whose ``SKILL.md`` already existed, so a
+    shipped plugin update never propagated — the workspace kept the stale skill
+    forever. Sync is now gated on the plugin's declared version.
+    """
+    workspace, (manager, plugin) = _sync_fixture(tmp_path, version="1.0.0", body="# v1\n")
+    monkeypatch.setattr(PluginRegistry, "list_plugins", lambda self: [plugin])
+    monkeypatch.setattr(PluginManager, "global_enabled_map", lambda self: {})
+
+    manager.sync_skills_to_workspace(workspace)
+    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v1\n"
+    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
+        "demo-plugin": "1.0.0"
+    }
+
+    # Same version: nothing to do, workspace keeps its copy.
+    workspace.write_text("skills/demo-skill/SKILL.md", "# edited-in-workspace\n", force=True)
+    manager.sync_skills_to_workspace(workspace)
+    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# edited-in-workspace\n"
+
+    # Version bump: the new content lands, overwriting the stale copy.
+    plugin.manifest.version = "1.1.0"
+    (plugin.skills_dir / "demo-skill" / "SKILL.md").write_text("# v2\n", encoding="utf-8")
+    manager.sync_skills_to_workspace(workspace)
+
+    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v2\n"
+    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
+        "demo-plugin": "1.1.0"
+    }
+
+
+def test_plugin_skill_sync_survives_corrupt_state_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed state file must not block syncing — treat it as "never synced"."""
+    workspace, (manager, plugin) = _sync_fixture(tmp_path, version="1.0.0", body="# v1\n")
+    monkeypatch.setattr(PluginRegistry, "list_plugins", lambda self: [plugin])
+    monkeypatch.setattr(PluginManager, "global_enabled_map", lambda self: {})
+
+    workspace.write_text("skills/.plugin-sync.json", "{ not json", force=True)
+    manager.sync_skills_to_workspace(workspace)
+
+    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v1\n"
+    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
+        "demo-plugin": "1.0.0"
+    }

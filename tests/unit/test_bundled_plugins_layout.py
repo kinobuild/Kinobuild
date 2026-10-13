@@ -21,15 +21,38 @@ def _catalog_ids() -> set[str]:
     return found
 
 
-def test_bundled_plugin_dirs_have_manifest_and_ui() -> None:
+def test_bundled_plugin_dirs_have_manifest_and_entry() -> None:
     root = default_bundled_plugins_root()
     found = _catalog_ids()
     assert found, "expected at least one catalog plugin"
     for name in found:
         child = root / name
+        assert (child / "plugin.yaml").is_file(), child
         assert (child / "main.py").is_file(), child
+
+
+def test_bundled_plugin_ui_declarations_are_complete() -> None:
+    """A declared ``ui:`` block must be backed by real files.
+
+    Not every bundled plugin ships a UI: a ``kind: skill`` plugin only contributes
+    SKILL.md files and has no tool result to renderize, so it declares no ``ui:``.
+    What must hold is that whenever a plugin *does* declare one, both the entry
+    and the manifest exist.
+    """
+    root = default_bundled_plugins_root()
+    found = _catalog_ids()
+    assert found, "expected at least one catalog plugin"
+
+    declaring = 0
+    for name in found:
+        child = root / name
+        yaml_text = (child / "plugin.yaml").read_text(encoding="utf-8")
+        if "ui:" not in yaml_text:
+            continue
+        declaring += 1
         assert (child / "ui" / "index.js").is_file(), child
         assert (child / "ui" / "manifest.json").is_file(), child
+    assert declaring, "expected at least one catalog plugin to declare a ui block"
 
 
 def test_seed_does_not_auto_install_real_catalog(tmp_path: Path) -> None:

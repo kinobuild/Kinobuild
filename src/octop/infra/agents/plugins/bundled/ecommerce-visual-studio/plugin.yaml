@@ -1,5 +1,5 @@
 id: ecommerce-visual-studio
-version: 0.2.0
+version: 0.2.1
 name: 电商视觉工坊
 description: 电商视觉工作台 — 主图/副图、详情页、多角度、广告图、社媒图、裂变套图，含中文排版与平台合规校验。集成 motiful/product-shots 与 dlazy-ai/ecommerce-skills（均 MIT），出图统一走内置 generate_image
 icon: "🖼️"

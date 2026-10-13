@@ -260,6 +260,44 @@ def _read_installed_version(plugin_dir: Path) -> str | None:
     return text or None
 
 
+PLUGIN_SYNC_STATE_PATH = "skills/.plugin-sync.json"
+
+
+def _read_plugin_sync_state(workspace: Any) -> dict[str, str]:
+    """Plugin id -> version last synced into this workspace.
+
+    A missing or malformed file is treated as "nothing synced yet", which
+    makes the next sync write everything through once.
+    """
+    try:
+        if not workspace.exists(PLUGIN_SYNC_STATE_PATH):
+            return {}
+        raw = workspace.read_text(PLUGIN_SYNC_STATE_PATH)
+    except Exception:
+        return {}
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v) for k, v in data.items() if isinstance(k, str)}
+
+
+def _write_plugin_sync_state(workspace: Any, state: dict[str, str]) -> None:
+    """Record which plugin versions are in the workspace (best effort)."""
+    try:
+        workspace.write_text(
+            PLUGIN_SYNC_STATE_PATH,
+            json.dumps(state, ensure_ascii=False, sort_keys=True),
+            force=True,
+        )
+    except Exception:  # pragma: no cover - bookkeeping must never break startup
+        logger.warning("failed to record plugin sync state", exc_info=True)
+
+
 def _version_tuple(version: str | None) -> tuple[int, ...]:
     ver = str(version or "0").strip() or "0"
     parts: list[int] = []
@@ -746,7 +784,9 @@ class PluginManager:
         if not isinstance(workspace, BackendWorkspace):
             return
         enabled = self.global_enabled_map()
+        synced_versions = _read_plugin_sync_state(workspace)
         pairs: list[tuple[str, bytes]] = []
+        stale_plugins: dict[str, str] = {}
         for plugin in PluginRegistry().list_plugins():
             if enabled.get(plugin.manifest.id) is False:
                 continue
@@ -754,18 +794,29 @@ class PluginManager:
                 continue
             if plugin.skills_dir is None:
                 continue
+            # Re-sync whenever the plugin's declared version changes. Keying only on
+            # "does the file exist" meant a published plugin update never reached an
+            # agent that had already synced once — the workspace kept the old skill
+            # forever, with no way to refresh it short of deleting the directory.
+            plugin_id = plugin.manifest.id
+            version = str(plugin.manifest.version or "").strip()
+            up_to_date = bool(version) and synced_versions.get(plugin_id) == version
             for skill_dir in plugin.skills_dir.iterdir():
                 if not skill_dir.is_dir():
                     continue
                 if not (skill_dir / "SKILL.md").is_file():
                     continue
                 dest = f"skills/{skill_dir.name}"
-                if workspace.exists(f"{dest}/SKILL.md"):
+                if up_to_date and workspace.exists(f"{dest}/SKILL.md"):
                     continue
                 for path in skill_dir.rglob("*"):
                     if not path.is_file():
                         continue
                     rel = path.relative_to(skill_dir).as_posix()
                     pairs.append((f"{dest}/{rel}", path.read_bytes()))
+            if version and not up_to_date:
+                stale_plugins[plugin_id] = version
         if pairs:
             workspace.upload_many(pairs)
+        if stale_plugins:
+            _write_plugin_sync_state(workspace, {**synced_versions, **stale_plugins})
