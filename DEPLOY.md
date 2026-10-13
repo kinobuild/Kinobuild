@@ -76,6 +76,52 @@ Compose 把宿主机 `${OCTOP_DATA}` 挂载到容器 `/data/.octop`。**这个�
 
 镜像内置 `HEALTHCHECK`，探测 `GET /api/health`。
 
+### 3.5 `uv.lock` 的正确处理（重要）
+
+`uv.lock` 里 246 个包全部指向 `pypi.org`。**这是对的，不要改写它。**
+
+### 为什么不要「套镜像源」
+
+镜像加速是**构建时**的事，不是源码的事。把 `uv.lock` 改成镜像地址会带来两个问题：
+
+1. **服务器上的锁与仓库不一致** —— 排查依赖问题时无法判断实际装的是哪一份。
+2. **每次部署都要手工套源** —— 漏一步就会退回 `pypi.org`（慢）或停留在旧锁（更糟：装了旧 `octop-harness`）。
+
+实测（干净 `uv` 缓存 + 把 `UV_INDEX_URL` 指向不存在的域名）：
+
+```
+error sending request for url (https://<fake-host>/simple/setuptools/)
+```
+
+⇒ `UV_INDEX_URL` **确实能重定向 `--frozen` 安装**，即使锁里写的是 `pypi.org`。
+因此保留 canonical 锁 + 构建参数即可，无需改写锁文件。
+
+### 部署要点
+
+- **`uv.lock` 必须同步到服务器**。若 rsync 规则里有 `--exclude uv.lock`，**去掉它**。
+  `uv sync --frozen` 完全信任锁文件；不同步 = 永远安装旧依赖（本次升级的
+  `octop-harness 1.0.2` / `octop-memory 1.0.1` 就装不上）。
+- 构建时用镜像参数，不改文件：
+
+```bash
+docker compose -f docker/docker-compose.yml build \
+  --build-arg PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple \
+  --build-arg PIP_TRUSTED_HOST=mirrors.cloud.tencent.com \
+  --build-arg NPM_REGISTRY=https://mirrors.cloud.tencent.com/npm/
+```
+
+Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile` 的 `uv sync` 步骤）。
+
+### 本地开发
+
+本机若配置了 `UV_DEFAULT_INDEX`，`uv run` 会按该源重新解析并**改写 `uv.lock`**，
+使工作区莫名其妙变脏。加 `UV_FROZEN=1` 即可禁止改写，同时镜像源仍然生效：
+
+```bash
+UV_FROZEN=1 uv run pytest -q
+```
+
+
 ## 4. HTTPS —— 必须做
 
 公网 HTTP 意味着**登录密码明文传输**。两种做法：
