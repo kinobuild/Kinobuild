@@ -265,6 +265,32 @@ async def test_admin_can_set_resource_policy(env, tmp_path, monkeypatch):
     assert r.json()["token_quota"] is None
 
 
+async def test_admin_can_set_image_quota(env):
+    """``PATCH /api/users/{id}`` must persist the image allowance.
+
+    Token quota and image quota are separate caps: image/video calls are billed
+    per item by the provider and never appear in the token ledger, so a token
+    quota cannot stand in for it. The dashboard has offered the field all along.
+    """
+    from tests.support.auth import TEST_PASSWORD, create_user
+
+    c, _srv, auth = env
+    await create_user(c, auth, username="image_quota_user", password=TEST_PASSWORD)
+    listed = (await c.get("/api/users", headers=auth)).json()
+    uid = next(u for u in listed if u["username"] == "image_quota_user")["id"]
+    assert next(u for u in listed if u["id"] == uid)["image_quota"] is None
+
+    r = await c.patch(f"/api/users/{uid}", headers=auth, json={"image_quota": 10})
+    assert r.status_code == 200, r.text
+    assert r.json()["image_quota"] == 10
+    listed = (await c.get("/api/users", headers=auth)).json()
+    assert next(u for u in listed if u["id"] == uid)["image_quota"] == 10
+
+    r = await c.patch(f"/api/users/{uid}", headers=auth, json={"image_quota": None})
+    assert r.status_code == 200, r.text
+    assert r.json()["image_quota"] is None
+
+
 async def test_batch_enable_disable_delete_and_token_quota(env):
     c, _srv, auth = env
     me = (await c.get("/api/auth/me", headers=auth)).json()

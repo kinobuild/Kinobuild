@@ -58,6 +58,7 @@ class UserPatchBody(BaseModel):
     avatar_icon: str | None = Field(default=None, max_length=32)
     workspace_root_dir: str | None = None
     token_quota: int | None = Field(default=None, ge=0)
+    image_quota: int | None = Field(default=None, ge=0)
     max_agents: int | None = Field(default=None, ge=0)
 
 

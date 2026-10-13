@@ -340,3 +340,25 @@ def test_role_router_has_no_private_policy_whitelist() -> None:
         "role router must use KNOWN_POLICIES from resource_policy"
     )
     assert user_roles.KNOWN_POLICIES is KNOWN_POLICIES
+
+
+def test_user_http_bodies_accept_every_known_policy() -> None:
+    """A policy the request body cannot carry is a policy admins cannot set.
+
+    Regression guard: ``image_quota`` reached the store, the manager, the role
+    router and the dashboard, but ``UserPatchBody`` never declared the field.
+    Pydantic dropped it from the PATCH payload, so 管理 → 用户 → 「生图额度」
+    saved without effect and the account stayed unlimited.
+    """
+    from octop.api.routers.users import UserBatchBody, UserCreateBody, UserPatchBody
+    from octop.infra.users.resource_policy import KNOWN_POLICIES, POLICY_WORKSPACE_ROOT_DIR
+
+    # The batch endpoint has no "move the workspace root" action, so it carries
+    # every policy except that one.
+    for model, expected in (
+        (UserCreateBody, KNOWN_POLICIES),
+        (UserPatchBody, KNOWN_POLICIES),
+        (UserBatchBody, KNOWN_POLICIES - {POLICY_WORKSPACE_ROOT_DIR}),
+    ):
+        missing = sorted(expected - set(model.model_fields))
+        assert not missing, f"{model.__name__} rejects {missing}"
