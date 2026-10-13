@@ -302,3 +302,52 @@ async def test_user_and_role_avatars_roundtrip(env):
     assert removed.status_code == 204
     gone = await c.get(f"/api/users/roles/{role_id}/avatar", headers=auth)
     assert gone.status_code == 404
+
+
+async def test_role_accepts_image_quota_policy(env):
+    """Image quota must survive the role write path and come back on read.
+
+    Regression: the router kept its own ``_KNOWN_POLICIES`` whitelist. Adding the
+    policy to ``resource_policy`` without updating that set made every role
+    carrying ``image_quota`` fail with a bare FORBIDDEN — which the dashboard
+    surfaced as "没有权限" (no permission) rather than a bad-parameter error.
+    """
+    c, _srv, auth = env
+    created = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={
+            "user_role_name": "体验用户",
+            "description": "生图配额",
+            "permissions": ["channels"],
+            "policies": [
+                {"name": "token_quota", "value": "500000"},
+                {"name": "image_quota", "value": "50"},
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    role = created.json()
+    assert role["image_quota"] == 50
+    assert role["token_quota"] == 500000
+    assert {"name": "image_quota", "value": "50"} in role["policies"]
+
+    listed = await c.get("/api/users/roles", headers=auth)
+    assert listed.status_code == 200, listed.text
+    by_id = {row["user_role_id"]: row for row in listed.json()}
+    assert by_id[role["user_role_id"]]["image_quota"] == 50
+
+
+async def test_role_rejects_unknown_policy_name(env):
+    """A genuinely unknown policy still fails, so the whitelist is not a no-op."""
+    c, _srv, auth = env
+    resp = await c.post(
+        "/api/users/roles",
+        headers=auth,
+        json={
+            "user_role_name": "坏角色",
+            "permissions": [],
+            "policies": [{"name": "not_a_policy", "value": "1"}],
+        },
+    )
+    assert resp.status_code == 400, resp.text
