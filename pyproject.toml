@@ -122,6 +122,12 @@ artifacts = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = [
+    # Vendored third-party skill scripts ship byte-for-byte (see the plugin's
+    # NOTICE.md); mypy already excludes this tree. Reformatting them would make
+    # future upstream diffs unreadable for no behavioural gain.
+    "src/octop/infra/agents/plugins/bundled/ecommerce-visual-studio/skills/*/scripts/",
+]
 include = ["*.py", "*.pyi", "*.pyw", "*.ipynb", "**/pyproject.toml", "**/ruff.toml", "**/.ruff.toml"]
 
 [tool.ruff.lint]
@@ -131,6 +137,10 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B011"]
 "src/octop/api/**" = ["B008"]
+# Bundled plugin payloads are third-party code shipped verbatim (mypy already
+# excludes this tree). Only relax the checks those payloads actually trip —
+# B905 (zip without strict=) in the vendored compliance script.
+"src/octop/infra/agents/plugins/bundled/**" = ["B905"]
 
 [tool.mypy]
 python_version = "3.12"

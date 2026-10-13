@@ -3207,6 +3207,7 @@ class AgentManager:
 
         from octop.infra.agents.middleware.binary_read_guard import BinaryReadGuardMiddleware
         from octop.infra.agents.middleware.browser_profile import BrowserProfileMiddleware
+        from octop.infra.agents.middleware.image_quota import ImageQuotaMiddleware
         from octop.infra.agents.middleware.octop_ui_offload import OctopUiOffloadMiddleware
         from octop.infra.agents.middleware.reasoning import ReasoningRequestMiddleware
         from octop.infra.agents.middleware.thread_artifacts import ThreadArtifactsMiddleware
@@ -3228,6 +3229,12 @@ class AgentManager:
             TokenQuotaMiddleware(
                 policy_repo=self._repos.user_policy_repo,
                 usage_repo=self._repos.usage_repo,
+            ),
+            ImageQuotaMiddleware(
+                policy_repo=self._repos.user_policy_repo,
+                usage_repo=self._repos.usage_repo,
+                user_repo=self._repos.user_repo,
+                agent_id=row.agent_id,
             ),
             ReasoningRequestMiddleware(),
             KnowledgeSearchHintMiddleware(),

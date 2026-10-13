@@ -17,6 +17,7 @@ from octop.infra.utils.host_dirs import (
 
 POLICY_WORKSPACE_ROOT_DIR = "workspace_root_dir"
 POLICY_TOKEN_QUOTA = "token_quota"
+POLICY_IMAGE_QUOTA = "image_quota"
 POLICY_MAX_AGENTS = "max_agents"
 
 
@@ -75,6 +76,21 @@ def token_quota_of(raw: Any) -> int | None:
         return None
 
 
+def image_quota_of(raw: Any) -> int | None:
+    """Lifetime allowance of generated images/videos (``None`` = unlimited)."""
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, Mapping) and "value" not in raw:
+        raw = raw.get(POLICY_IMAGE_QUOTA)
+    text = active_policy_value(raw)
+    if text is None:
+        return None
+    try:
+        return int(text)
+    except (TypeError, ValueError):
+        return None
+
+
 def max_agents_of(raw: Any) -> int | None:
     if isinstance(raw, int):
         return raw
@@ -103,6 +119,7 @@ def public_policy_fields(rows: Sequence[Any] | Mapping[str, str] | None) -> dict
     return {
         "workspace_root_dir": workspace_root_dir_of(by_name),
         "token_quota": token_quota_of(by_name.get(POLICY_TOKEN_QUOTA)),
+        "image_quota": image_quota_of(by_name.get(POLICY_IMAGE_QUOTA)),
         "max_agents": max_agents_of(by_name.get(POLICY_MAX_AGENTS)),
     }
 
@@ -148,6 +165,15 @@ def normalize_token_quota(raw: int | None) -> int | None:
     return quota
 
 
+def normalize_image_quota(raw: int | None) -> int | None:
+    if raw is None:
+        return None
+    quota = int(raw)
+    if quota < 0:
+        raise OctopError(ErrorCode.FORBIDDEN, "image quota must be >= 0", status=400)
+    return quota
+
+
 def normalize_max_agents(raw: int | None) -> int | None:
     if raw is None:
         return None
@@ -189,6 +215,25 @@ def assert_token_quota_available(policy_repo: Any, usage_repo: Any, user_id: int
         raise OctopError(
             ErrorCode.TOKEN_QUOTA_EXCEEDED,
             "token quota exceeded",
+            details={"used": used, "quota": quota},
+        )
+
+
+def assert_image_quota_available(policy_repo: Any, usage_repo: Any, user_id: int) -> None:
+    """Raise when the user's lifetime generated-image count is at or above quota.
+
+    Token quota cannot cover image generation: media calls are billed per image by
+    the upstream provider and never land in ``usage_log``'s token columns. Without
+    this check a shared relay key lets one account spend the whole budget.
+    """
+    quota = image_quota_of(policy_repo.get(user_id, POLICY_IMAGE_QUOTA))
+    if quota is None:
+        return
+    used = int(usage_repo.media_calls_for_user(user_id))
+    if used >= quota:
+        raise OctopError(
+            ErrorCode.IMAGE_QUOTA_EXCEEDED,
+            "image quota exceeded",
             details={"used": used, "quota": quota},
         )
 

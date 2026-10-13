@@ -119,6 +119,7 @@ interface UserRow {
   avatar_icon?: string | null;
   workspace_root_dir?: string | null;
   token_quota?: number | null;
+  image_quota?: number | null;
   max_agents?: number | null;
 }
 
@@ -140,6 +141,8 @@ export interface PolicyFormValues {
   workspace_root_dir?: string;
   limit_token_quota?: boolean;
   token_quota?: number | null;
+  limit_image_quota?: boolean;
+  image_quota?: number | null;
   limit_max_agents?: boolean;
   max_agents?: number | null;
 }
@@ -178,6 +181,8 @@ function policyFieldsFromRole(
     workspace_root_dir: role.workspace_root_dir ?? undefined,
     limit_token_quota: role.token_quota != null,
     token_quota: role.token_quota ?? undefined,
+    limit_image_quota: role.image_quota != null,
+    image_quota: role.image_quota ?? undefined,
     limit_max_agents: role.max_agents != null,
     max_agents: role.max_agents ?? undefined,
   };
@@ -437,6 +442,7 @@ interface BatchResponse {
 }
 
 interface BatchTokenFormValues {
+image_quota?: number | null;
   limit_token_quota?: boolean;
   token_quota?: number | null;
 }
@@ -457,6 +463,7 @@ export function policyPayload(
 ): {
   workspace_root_dir: string | null;
   token_quota: number | null;
+  image_quota: number | null;
   max_agents: number | null;
 } {
   return {
@@ -465,6 +472,7 @@ export function policyPayload(
         ? values.workspace_root_dir?.trim() || null
         : null,
     token_quota: values.limit_token_quota ? values.token_quota ?? null : null,
+    image_quota: values.limit_image_quota ? values.image_quota ?? null : null,
     max_agents: values.limit_max_agents ? values.max_agents ?? null : null,
   };
 }
@@ -484,6 +492,9 @@ export function rolePoliciesFromForm(
   if (flat.token_quota != null) {
     policies.push({ name: "token_quota", value: String(flat.token_quota) });
   }
+  if (flat.image_quota != null) {
+    policies.push({ name: "image_quota", value: String(flat.image_quota) });
+  }
   if (flat.max_agents != null) {
     policies.push({ name: "max_agents", value: String(flat.max_agents) });
   }
@@ -495,6 +506,9 @@ const TOKEN_QUOTA_PRESETS = [
   1_000_000, 5_000_000, 10_000_000, 50_000_000, 100_000_000,
 ] as const;
 
+/** Common image-generation allowances, counted in generated items. */
+const IMAGE_QUOTA_PRESETS = [10, 30, 50, 100, 300, 1000] as const;
+
 const MAX_AGENTS_PRESETS = [1, 3, 5, 10, 20] as const;
 
 function formatMillionsLabel(tokens: number): string {
@@ -505,6 +519,61 @@ function formatMillionsLabel(tokens: number): string {
 
 function formatTokenQuotaExact(tokens: number): string {
   return tokens.toLocaleString("en-US");
+}
+
+interface ImageQuotaInputProps {
+  value?: number | null;
+  onChange?: (value: number | null) => void;
+}
+
+/**
+ * Image-generation allowance, counted in generated items rather than tokens.
+ *
+ * Image/video calls are billed per item by the provider and never appear in the
+ * token ledger, so the token quota cannot cap them.
+ */
+function ImageQuotaInput({ value, onChange }: ImageQuotaInputProps) {
+  const { t } = useTranslation();
+  const numeric =
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+
+  return (
+    <div className={styles.tokenQuotaField}>
+      <InputNumber
+        value={numeric ?? undefined}
+        onChange={(next) => onChange?.(typeof next === "number" ? next : null)}
+        min={0}
+        step={1}
+        style={{ width: "100%" }}
+        placeholder={t("adminUsers.policyImageQuotaPlaceholder")}
+      />
+      <div className={styles.tokenQuotaPresets} role="group">
+        <span className={styles.tokenQuotaPresetsLabel}>
+          {t("adminUsers.policyImageQuotaPresets")}
+        </span>
+        {IMAGE_QUOTA_PRESETS.map((preset) => {
+          const selected = numeric === preset;
+          return (
+            <button
+              key={preset}
+              type="button"
+              className={`${styles.tokenQuotaPreset} ${
+                selected ? styles.tokenQuotaPresetActive : ""
+              }`}
+              onClick={() => onChange?.(preset)}
+            >
+              {t("adminUsers.policyImageQuotaPreset", { count: preset })}
+            </button>
+          );
+        })}
+      </div>
+      {numeric != null && numeric > 0 ? (
+        <div className={styles.tokenQuotaPreview}>
+          {t("adminUsers.policyImageQuotaPreview", { count: numeric })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 interface TokenQuotaInputProps {
@@ -691,6 +760,36 @@ export function ResourcePolicyFields({
               ]}
             >
               <TokenQuotaInput />
+            </Form.Item>
+          ) : null
+        }
+      </Form.Item>
+      <Form.Item
+        label={t("adminUsers.policyImageQuota")}
+        extra={t("adminUsers.policyImageQuotaHint")}
+      >
+        <Form.Item name="limit_image_quota" valuePropName="checked" noStyle>
+          <Switch />
+        </Form.Item>
+      </Form.Item>
+      <Form.Item
+        noStyle
+        shouldUpdate={(prev, cur) =>
+          prev.limit_image_quota !== cur.limit_image_quota
+        }
+      >
+        {({ getFieldValue }) =>
+          getFieldValue("limit_image_quota") ? (
+            <Form.Item
+              name="image_quota"
+              rules={[
+                {
+                  required: true,
+                  message: t("adminUsers.policyImageQuotaRequired"),
+                },
+              ]}
+            >
+              <ImageQuotaInput />
             </Form.Item>
           ) : null
         }
@@ -1694,6 +1793,8 @@ export default function UsersListPanel() {
       workspace_root_dir: undefined,
       limit_token_quota: false,
       token_quota: undefined,
+      limit_image_quota: false,
+      image_quota: undefined,
       limit_max_agents: false,
       max_agents: undefined,
       ...(userRole ? policyFieldsFromRole(userRole, workspaceRootAllowed) : {}),
@@ -1724,6 +1825,8 @@ export default function UsersListPanel() {
         : undefined,
       limit_token_quota: row.token_quota != null,
       token_quota: row.token_quota ?? undefined,
+      limit_image_quota: row.image_quota != null,
+      image_quota: row.image_quota ?? undefined,
       limit_max_agents: row.max_agents != null,
       max_agents: row.max_agents ?? undefined,
     });
@@ -2298,6 +2401,7 @@ export default function UsersListPanel() {
             permissions: [],
             limit_workspace_root: false,
             limit_token_quota: false,
+            limit_image_quota: false,
             limit_max_agents: false,
           }}
           className={styles.createUserForm}
@@ -2770,6 +2874,36 @@ export default function UsersListPanel() {
                   ]}
                 >
                   <TokenQuotaInput />
+                </Form.Item>
+              ) : null
+            }
+          </Form.Item>
+          <Form.Item
+            label={t("adminUsers.policyImageQuota")}
+            extra={t("adminUsers.policyImageQuotaHint")}
+          >
+            <Form.Item name="limit_image_quota" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) =>
+              prev.limit_image_quota !== cur.limit_image_quota
+            }
+          >
+            {({ getFieldValue }) =>
+              getFieldValue("limit_image_quota") ? (
+                <Form.Item
+                  name="image_quota"
+                  rules={[
+                    {
+                      required: true,
+                      message: t("adminUsers.policyImageQuotaRequired"),
+                    },
+                  ]}
+                >
+                  <ImageQuotaInput />
                 </Form.Item>
               ) : null
             }

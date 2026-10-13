@@ -157,6 +157,7 @@ def test_user_policy_repo_named_rows(db: SqlitePool, tmp_path: Path) -> None:
     assert public_policy_fields(policies.list_for_user(uid)) == {
         "workspace_root_dir": str(jail),
         "token_quota": 42,
+        "image_quota": None,
         "max_agents": None,
     }
     root = policies.get(uid, POLICY_WORKSPACE_ROOT_DIR)

@@ -13,6 +13,7 @@ from octop.infra.errors import ErrorCode, OctopError
 from octop.infra.users.identity import Role, User
 from octop.infra.users.permissions import PERMISSIONS, effective_permissions
 from octop.infra.users.resource_policy import (
+    normalize_image_quota,
     normalize_max_agents,
     normalize_token_quota,
     normalize_workspace_root_dir,
@@ -22,7 +23,9 @@ from octop.infra.utils.locale import resolve_request_locale
 
 router = APIRouter()
 
-UserBatchAction = Literal["enable", "disable", "delete", "set_token_quota", "set_max_agents"]
+UserBatchAction = Literal[
+    "enable", "disable", "delete", "set_token_quota", "set_image_quota", "set_max_agents"
+]
 
 
 class UserCreateBody(BaseModel):
@@ -38,6 +41,7 @@ class UserCreateBody(BaseModel):
     role_name: str | None = Field(default=None, max_length=64)
     workspace_root_dir: str | None = None
     token_quota: int | None = Field(default=None, ge=0)
+    image_quota: int | None = Field(default=None, ge=0)
     max_agents: int | None = Field(default=None, ge=0)
 
 
@@ -68,6 +72,11 @@ class UserBatchBody(BaseModel):
         default=None,
         ge=0,
         description="Used by set_token_quota. null clears the limit (unlimited).",
+    )
+    image_quota: int | None = Field(
+        default=None,
+        ge=0,
+        description="Used by set_image_quota. null clears the limit (unlimited).",
     )
     max_agents: int | None = Field(
         default=None,
@@ -163,9 +172,11 @@ def _policy_kwargs_replace_from_pairs(pairs: list[tuple[str, str]]) -> dict[str,
     linger after a switch (including to admin, which has no resource limits).
     """
     from octop.infra.users.resource_policy import (
+        POLICY_IMAGE_QUOTA,
         POLICY_MAX_AGENTS,
         POLICY_TOKEN_QUOTA,
         POLICY_WORKSPACE_ROOT_DIR,
+        image_quota_of,
         max_agents_of,
         token_quota_of,
     )
@@ -174,6 +185,7 @@ def _policy_kwargs_replace_from_pairs(pairs: list[tuple[str, str]]) -> dict[str,
     return {
         "workspace_root_dir": by_name.get(POLICY_WORKSPACE_ROOT_DIR),
         "token_quota": token_quota_of(by_name.get(POLICY_TOKEN_QUOTA)),
+        "image_quota": image_quota_of(by_name.get(POLICY_IMAGE_QUOTA)),
         "max_agents": max_agents_of(by_name.get(POLICY_MAX_AGENTS)),
     }
 
@@ -195,6 +207,8 @@ def _policy_kwargs_from_body(body: UserCreateBody | UserPatchBody) -> dict[str, 
         policy_kwargs["workspace_root_dir"] = body.workspace_root_dir
     if "token_quota" in body.model_fields_set:
         policy_kwargs["token_quota"] = body.token_quota
+    if "image_quota" in body.model_fields_set:
+        policy_kwargs["image_quota"] = body.image_quota
     if "max_agents" in body.model_fields_set:
         policy_kwargs["max_agents"] = body.max_agents
     return policy_kwargs
@@ -300,6 +314,8 @@ async def create_user(
         normalize_workspace_root_dir(policy_kwargs["workspace_root_dir"])
     if "token_quota" in policy_kwargs:
         normalize_token_quota(policy_kwargs["token_quota"])
+    if "image_quota" in policy_kwargs:
+        normalize_image_quota(policy_kwargs["image_quota"])
     if "max_agents" in policy_kwargs:
         normalize_max_agents(policy_kwargs["max_agents"])
     role_name = (
@@ -331,6 +347,7 @@ async def _batch_apply_one(
     user_id: int,
     action: UserBatchAction,
     token_quota: int | None,
+    image_quota: int | None,
     max_agents: int | None,
 ) -> UserBatchItemResult:
     if action in ("disable", "delete") and user_id == actor.id:
@@ -358,6 +375,11 @@ async def _batch_apply_one(
                 row.username,
                 token_quota=token_quota,
             )
+        elif action == "set_image_quota":
+            await server.user_manager.set_resource_policy(
+                row.username,
+                image_quota=image_quota,
+            )
         elif action == "set_max_agents":
             await server.user_manager.set_resource_policy(
                 row.username,
@@ -383,8 +405,8 @@ async def _batch_apply_one(
     summary="Batch enable, disable, delete, or set resource policies",
     description=(
         "Apply one action to many users. Per-user failures do not abort the batch. "
-        "Disable and delete skip the current actor. For set_token_quota / set_max_agents, "
-        "a null value clears the limit."
+        "Disable and delete skip the current actor. For set_token_quota / "
+        "set_image_quota / set_max_agents, a null value clears the limit."
     ),
     response_model=UserBatchResponse,
 )
@@ -395,6 +417,8 @@ async def batch_users(
 ) -> UserBatchResponse:
     if body.action == "set_token_quota":
         normalize_token_quota(body.token_quota)
+    if body.action == "set_image_quota":
+        normalize_image_quota(body.image_quota)
     if body.action == "set_max_agents":
         normalize_max_agents(body.max_agents)
 
@@ -416,6 +440,7 @@ async def batch_users(
                 user_id=user_id,
                 action=body.action,
                 token_quota=body.token_quota,
+                image_quota=body.image_quota,
                 max_agents=body.max_agents,
             )
         )

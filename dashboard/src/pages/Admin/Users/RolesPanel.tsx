@@ -144,6 +144,7 @@ export default function RolesPanel() {
           permissions: [...baselinePermissions],
           limit_workspace_root: false,
           limit_token_quota: false,
+          limit_image_quota: false,
           limit_max_agents: false,
         }
       : {
@@ -159,6 +160,8 @@ export default function RolesPanel() {
             : undefined,
           limit_token_quota: editor.token_quota != null,
           token_quota: editor.token_quota ?? undefined,
+          limit_image_quota: editor.image_quota != null,
+          image_quota: editor.image_quota ?? undefined,
           limit_max_agents: editor.max_agents != null,
           max_agents: editor.max_agents ?? undefined,
         };

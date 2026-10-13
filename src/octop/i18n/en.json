@@ -496,7 +496,8 @@
     "TEAM_MEMBER_BUSY": "This expert has an in-flight team job. Wait until it finishes.",
     "TEAM_NOT_SHAREABLE": "Teams cannot be shared in this version.",
     "SKILL_PACKAGE_COPY_DENIED": "The creator of this skill package has disabled copying its skills.",
-    "SKILL_PACKAGE_LOCKED": "This skill was copied from a locked skill package and cannot be edited in the workspace."
+    "SKILL_PACKAGE_LOCKED": "This skill was copied from a locked skill package and cannot be edited in the workspace.",
+    "IMAGE_QUOTA_EXCEEDED": "This account has used up its image generation quota. Please contact an administrator to raise the limit ({used}/{quota})."
   },
   "desktop": {
     "install_log_deps": "Installing Python dependencies…",

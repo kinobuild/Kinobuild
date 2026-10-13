@@ -207,7 +207,8 @@
     "TEAM_MEMBER_BUSY": "该专家有进行中的团队任务，请等结束后再调整成员或删除。",
     "TEAM_NOT_SHAREABLE": "当前版本不支持分享团队。",
     "SKILL_PACKAGE_COPY_DENIED": "该技能包的创建者已禁止复制其中的技能。",
-    "SKILL_PACKAGE_LOCKED": "此技能复制自锁定策略的技能包，无法在工作区编辑。"
+    "SKILL_PACKAGE_LOCKED": "此技能复制自锁定策略的技能包，无法在工作区编辑。",
+    "IMAGE_QUOTA_EXCEEDED": "该账号的生图额度已用完，请联系管理员提升额度（{{used}}/{{quota}}）。"
   },
   "nav": {
     "chat": "对话",
@@ -5455,7 +5456,14 @@
       "delete": "删除",
       "set_token_quota": "设置 Token 上限",
       "set_max_agents": "设置专家上限"
-    }
+    },
+    "policyImageQuota": "生图额度",
+    "policyImageQuotaHint": "该用户累计可生成的图片/视频张数。图片按张计费、不计入 token，所以需要单独设限。关闭表示不限制。",
+    "policyImageQuotaRequired": "请输入生图额度",
+    "policyImageQuotaPlaceholder": "例如 50（张）",
+    "policyImageQuotaPresets": "快速填写",
+    "policyImageQuotaPreset": "{{count}} 张",
+    "policyImageQuotaPreview": "累计可生成 {{count}} 张图（用完即停，需管理员手动提升）"
   },
   "adminSso": {
     "panelTitle": "单点登录",

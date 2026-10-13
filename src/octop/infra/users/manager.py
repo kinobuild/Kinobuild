@@ -565,12 +565,15 @@ class UserManager:
         *,
         workspace_root_dir: Any = UNSET,
         token_quota: Any = UNSET,
+        image_quota: Any = UNSET,
         max_agents: Any = UNSET,
     ) -> None:
         from octop.infra.users.resource_policy import (
+            POLICY_IMAGE_QUOTA,
             POLICY_MAX_AGENTS,
             POLICY_TOKEN_QUOTA,
             POLICY_WORKSPACE_ROOT_DIR,
+            normalize_image_quota,
             normalize_max_agents,
             normalize_token_quota,
             normalize_workspace_root_dir,
@@ -582,6 +585,7 @@ class UserManager:
         updates: dict[str, str | None] = {}
         root_arg: Any = UNSET
         quota_arg: Any = UNSET
+        image_quota_arg: Any = UNSET
         max_agents_arg: Any = UNSET
         if workspace_root_dir is not UNSET:
             root_arg = normalize_workspace_root_dir(workspace_root_dir)
@@ -589,6 +593,9 @@ class UserManager:
         if token_quota is not UNSET:
             quota_arg = normalize_token_quota(token_quota)
             updates[POLICY_TOKEN_QUOTA] = None if quota_arg is None else str(quota_arg)
+        if image_quota is not UNSET:
+            image_quota_arg = normalize_image_quota(image_quota)
+            updates[POLICY_IMAGE_QUOTA] = None if image_quota_arg is None else str(image_quota_arg)
         if max_agents is not UNSET:
             max_agents_arg = normalize_max_agents(max_agents)
             updates[POLICY_MAX_AGENTS] = None if max_agents_arg is None else str(max_agents_arg)
@@ -609,6 +616,13 @@ class UserManager:
                 target=username,
                 payload=str(quota_arg) if quota_arg is not None else "",
             )
+        if image_quota is not UNSET:
+            self._services.audit_repo.write(
+                actor=ACTOR_ADMIN,
+                action="user.set_image_quota",
+                target=username,
+                payload=str(image_quota_arg) if image_quota_arg is not None else "",
+            )
         if max_agents is not UNSET:
             self._services.audit_repo.write(
                 actor=ACTOR_ADMIN,
@@ -622,6 +636,9 @@ class UserManager:
 
     async def set_token_quota(self, username: str, token_quota: int | None) -> None:
         await self.set_resource_policy(username, token_quota=token_quota)
+
+    async def set_image_quota(self, username: str, image_quota: int | None) -> None:
+        await self.set_resource_policy(username, image_quota=image_quota)
 
     async def set_max_agents(self, username: str, max_agents: int | None) -> None:
         await self.set_resource_policy(username, max_agents=max_agents)
