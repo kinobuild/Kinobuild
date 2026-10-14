@@ -18,7 +18,7 @@ echo "目标: $BASE"
 echo
 
 # 1) 列出所有 agent
-agents=$(curl -sS --max-time 30 "$BASE/api/agents" -H "Authorization: Bearer $TOKEN" \
+agents=$(curl -sS --max-time 30 "$BASE/api/agents?scope=all" -H "Authorization: Bearer $TOKEN" \
   | python3 -c 'import sys,json; d=json.load(sys.stdin); [print(a["agent_id"]) for a in (d if isinstance(d,list) else d.get("agents",[]))]')
 
 if [ -z "$agents" ]; then
