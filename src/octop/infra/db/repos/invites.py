@@ -30,10 +30,15 @@ class InviteRow:
     revoked_at: int | None
     role_name: str | None = None
     role: str | None = None
+    max_uses: int | None = 1
+    used_count: int = 0
 
     @classmethod
     def from_row(cls, row: DbRow) -> InviteRow:
         keys = set(row.keys())
+        # Columns absent (pre-v21 physical schema) fall back to single-use.
+        raw_max_uses = row["max_uses"] if "max_uses" in keys else 1
+        raw_used_count = row["used_count"] if "used_count" in keys else 0
         return cls(
             id=int(row["id"]),
             code=str(row["code"]),
@@ -48,13 +53,22 @@ class InviteRow:
             revoked_at=int(row["revoked_at"]) if row["revoked_at"] is not None else None,
             role_name=_optional_text(row["role_name"]) if "role_name" in keys else None,
             role=_optional_text(row["role"]) if "role" in keys else None,
+            max_uses=int(raw_max_uses) if raw_max_uses is not None else None,
+            used_count=int(raw_used_count) if raw_used_count is not None else 0,
         )
+
+    def is_exhausted(self) -> bool:
+        """True once the invite has admitted ``max_uses`` users (``NULL`` = unlimited)."""
+        if self.max_uses is not None and self.used_count >= self.max_uses:
+            return True
+        # Pre-v21 rows only carried ``used_at``; a missing counter still means used.
+        return self.used_count <= 0 and self.used_at is not None
 
     def status(self, *, now: int | None = None) -> str:
         ts = now if now is not None else now_ts()
         if self.revoked_at is not None:
             return "revoked"
-        if self.used_at is not None:
+        if self.is_exhausted():
             return "used"
         if self.expires_at <= ts:
             return "expired"
@@ -74,15 +88,16 @@ class InviteRepo:
         note: str | None = None,
         role_name: str | None = None,
         role: str | None = None,
+        max_uses: int | None = 1,
     ) -> InviteRow:
         ts = now_ts()
         with self._db.transaction() as conn:
             invite_id = insert_returning_id(
                 conn,
                 "INSERT INTO user_invites("
-                "code, created_by, note, created_at, expires_at, role_name, role"
-                ") VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (code, created_by, note, ts, expires_at, role_name, role),
+                "code, created_by, note, created_at, expires_at, role_name, role, max_uses"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (code, created_by, note, ts, expires_at, role_name, role, max_uses),
             )
         row = self.get(invite_id)
         assert row is not None
@@ -112,11 +127,13 @@ class InviteRepo:
             if row is None:
                 return None
             invite = InviteRow.from_row(row)
-            if invite.used_at is not None or invite.revoked_at is not None:
+            # Partially redeemed multi-use codes can still be revoked: that is
+            # how an admin kills a link that leaked into a group chat.
+            if invite.revoked_at is not None or invite.is_exhausted():
                 return invite
             conn.execute(
-                "UPDATE user_invites SET revoked_at = ? WHERE id = ? AND used_at IS NULL "
-                "AND revoked_at IS NULL",
+                "UPDATE user_invites SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL "
+                "AND (max_uses IS NULL OR used_count < max_uses)",
                 (ts, invite_id),
             )
         return self.get(invite_id)
@@ -188,8 +205,10 @@ class InviteRepo:
             if policies:
                 _insert_named_policies(conn, user_id=user_id, policies=policies, ts=ts)
             updated = conn.execute(
-                "UPDATE user_invites SET used_at = ?, used_by_user_id = ? "
-                "WHERE id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?",
+                "UPDATE user_invites "
+                "SET used_count = used_count + 1, used_at = ?, used_by_user_id = ? "
+                "WHERE id = ? AND revoked_at IS NULL AND expires_at > ? "
+                "AND (max_uses IS NULL OR used_count < max_uses)",
                 (ts, user_id, invite.id, ts),
             )
             if getattr(updated, "rowcount", 1) == 0:
@@ -237,4 +256,6 @@ def invite_status_payload(invite: InviteRow, *, now: int | None = None) -> dict[
         "status": invite.status(now=ts),
         "role_name": invite.role_name,
         "role": invite.role,
+        "max_uses": invite.max_uses,
+        "used_count": invite.used_count,
     }

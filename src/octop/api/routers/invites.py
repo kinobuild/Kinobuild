@@ -14,7 +14,9 @@ from octop.infra.errors import ErrorCode, OctopError
 from octop.infra.users.identity import User
 from octop.infra.users.invites import (
     DEFAULT_EXPIRES_DAYS,
+    DEFAULT_MAX_USES,
     MAX_EXPIRES_DAYS,
+    MAX_INVITE_USES,
     MIN_EXPIRES_DAYS,
     InviteService,
     build_invite_url,
@@ -59,6 +61,15 @@ class InviteCreateBody(BaseModel):
     role: str | None = Field(
         default=None,
         description="Role-template public id stored on the invite. Applied at redeem time.",
+    )
+    max_uses: int | None = Field(
+        default=DEFAULT_MAX_USES,
+        ge=1,
+        le=MAX_INVITE_USES,
+        description=(
+            "How many accounts this code may register. ``null`` means unlimited; "
+            "omitting the field keeps the legacy single-use behaviour."
+        ),
     )
 
 
@@ -116,6 +127,7 @@ async def create_invite(
         expires_in_days=body.expires_in_days,
         role_name=role_name,
         role=role_id,
+        max_uses=body.max_uses,
     )
     from octop.infra.db.repos.invites import invite_status_payload
 

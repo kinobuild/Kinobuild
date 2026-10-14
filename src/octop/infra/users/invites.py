@@ -1,4 +1,8 @@
-"""One-time user invite codes — create, validate, redeem."""
+"""User invite codes — create, validate, redeem.
+
+Codes are reusable up to ``max_uses`` redemptions (``None`` = unlimited).
+Invites created before schema v21 stay single-use.
+"""
 
 from __future__ import annotations
 
@@ -22,6 +26,8 @@ from octop.infra.utils.locale import normalize_locale
 DEFAULT_EXPIRES_DAYS = 7
 MIN_EXPIRES_DAYS = 1
 MAX_EXPIRES_DAYS = 90
+DEFAULT_MAX_USES = 1
+MAX_INVITE_USES = 1000
 _CODE_ALPHABET = string.ascii_letters + string.digits
 _CODE_LENGTH = 11
 
@@ -81,6 +87,7 @@ class InviteService:
         expires_in_days: int = DEFAULT_EXPIRES_DAYS,
         role_name: str | None = None,
         role: str | None = None,
+        max_uses: int | None = DEFAULT_MAX_USES,
     ) -> InviteRow:
         days = int(expires_in_days)
         if days < MIN_EXPIRES_DAYS or days > MAX_EXPIRES_DAYS:
@@ -89,6 +96,14 @@ class InviteService:
                 f"expires_in_days must be between {MIN_EXPIRES_DAYS} and {MAX_EXPIRES_DAYS}",
                 status=400,
             )
+        if max_uses is not None:
+            max_uses = int(max_uses)
+            if max_uses < 1 or max_uses > MAX_INVITE_USES:
+                raise OctopError(
+                    ErrorCode.FORBIDDEN,
+                    f"max_uses must be between 1 and {MAX_INVITE_USES}, or null for unlimited",
+                    status=400,
+                )
         cleaned = note.strip() if isinstance(note, str) else None
         if cleaned == "":
             cleaned = None
@@ -104,6 +119,7 @@ class InviteService:
                     note=cleaned,
                     role_name=role_name,
                     role=role,
+                    max_uses=max_uses,
                 )
                 self._services.audit_repo.write(
                     actor=actor_username,

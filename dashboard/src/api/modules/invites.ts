@@ -13,6 +13,10 @@ export interface InviteRow {
   used_by_user_id: number | null;
   revoked_at: number | null;
   status: InviteStatus;
+  /** How many accounts this code may register; ``null`` means unlimited. */
+  max_uses: number | null;
+  /** Successful redemptions so far. */
+  used_count: number;
   invite_path: string;
   invite_url: string;
   role_name?: string | null;
@@ -24,6 +28,8 @@ export interface InviteCreateBody {
   note?: string | null;
   expires_in_days?: number;
   role?: string | null;
+  /** ``null`` = unlimited; omit for a single-use code. */
+  max_uses?: number | null;
 }
 
 export interface InviteRedeemBody {

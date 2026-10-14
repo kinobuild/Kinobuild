@@ -128,3 +128,75 @@ async def test_invite_admin_requires_users_permission(env) -> None:
         headers={"Authorization": f"Bearer {tok}"},
     )
     assert denied.status_code == 403
+
+
+async def test_invite_multi_use_code_exhausts(env) -> None:
+    c, _srv, auth = env
+
+    created = await c.post(
+        "/api/users/invites",
+        headers=auth,
+        json={"note": "team link", "expires_in_days": 7, "max_uses": 2},
+    )
+    assert created.status_code == 201, created.text
+    invite = created.json()
+    assert invite["max_uses"] == 2
+    assert invite["used_count"] == 0
+    assert invite["status"] == "pending"
+    code = invite["code"]
+
+    for index, username in enumerate(("team_member_a", "team_member_b"), start=1):
+        redeem = await c.post(
+            "/api/auth/invite/redeem",
+            json={"code": code, "username": username, "password": "InvitePass12"},
+        )
+        assert redeem.status_code == 200, redeem.text
+        listed = await c.get("/api/users/invites", headers=auth)
+        row = next(r for r in listed.json() if r["code"] == code)
+        assert row["used_count"] == index
+        assert row["status"] == ("pending" if index < 2 else "used")
+
+    # The same code is reusable while slots remain, and rejected once spent.
+    third = await c.post(
+        "/api/auth/invite/redeem",
+        json={"code": code, "username": "team_member_c", "password": "InvitePass12"},
+    )
+    assert third.status_code == 409
+    assert third.json()["error"]["code"] == "INVITE_USED"
+
+    validate = await c.post("/api/auth/invite/validate", json={"code": code})
+    assert validate.status_code == 409
+    assert validate.json()["error"]["code"] == "INVITE_USED"
+
+
+async def test_invite_unlimited_code(env) -> None:
+    c, _srv, auth = env
+
+    created = await c.post(
+        "/api/users/invites",
+        headers=auth,
+        json={"expires_in_days": 7, "max_uses": None},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["max_uses"] is None
+    code = created.json()["code"]
+
+    for username in ("open_member_a", "open_member_b", "open_member_c"):
+        redeem = await c.post(
+            "/api/auth/invite/redeem",
+            json={"code": code, "username": username, "password": "InvitePass12"},
+        )
+        assert redeem.status_code == 200, redeem.text
+
+    listed = await c.get("/api/users/invites", headers=auth)
+    row = next(r for r in listed.json() if r["code"] == code)
+    assert row["max_uses"] is None
+    assert row["used_count"] == 3
+    assert row["status"] == "pending"
+
+
+async def test_invite_max_uses_rejects_out_of_range(env) -> None:
+    c, _srv, auth = env
+    for value in (0, -3, 1001):
+        r = await c.post("/api/users/invites", headers=auth, json={"max_uses": value})
+        assert r.status_code == 422, (value, r.text)

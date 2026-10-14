@@ -912,6 +912,26 @@ def _ensure_user_invites_schema(db: DatabasePool) -> None:
         )
 
 
+def _ensure_invite_usage_schema(db: DatabasePool) -> None:
+    """Add reusable-invite columns (v21) on clamped / repaired databases.
+
+    Invites created before v21 were single-use. When the columns are missing
+    on first sight we pin every existing row to ``max_uses = 1`` so the
+    upgrade cannot silently widen an already-shared one-time code. ``NULL``
+    therefore only ever means "unlimited" for invites created after v21.
+    """
+    if not _table_exists(db, "user_invites"):
+        return
+    had_max_uses = "max_uses" in _table_columns(db, "user_invites")
+    _ensure_column(db, "user_invites", "max_uses", "INTEGER")
+    _ensure_column(db, "user_invites", "used_count", "INTEGER NOT NULL DEFAULT 0")
+    if had_max_uses:
+        return
+    with db.connect() as conn:
+        conn.execute("UPDATE user_invites SET max_uses = 1 WHERE max_uses IS NULL")
+        conn.execute("UPDATE user_invites SET used_count = 1 WHERE used_at IS NOT NULL")
+
+
 def _ensure_user_role_schema(db: DatabasePool) -> None:
     """Role templates; users.role / user_invites.role store the template id (v18)."""
     if not _table_exists(db, "users"):
@@ -1903,6 +1923,13 @@ def _apply_sqlite_migration(db: DatabasePool, version: int, path: Path) -> None:
         with db.connect() as conn:
             conn.execute("UPDATE _schema_version SET version = ?", (version,))
         return
+    if version == 21:
+        # SQLite uses the idempotent helper so re-applying 021 over a current
+        # physical schema (clamped-watermark repairs) cannot re-add columns.
+        _ensure_invite_usage_schema(db)
+        with db.connect() as conn:
+            conn.execute("UPDATE _schema_version SET version = ?", (version,))
+        return
     sql = path.read_text(encoding="utf-8")
     with db.connect() as conn:
         conn.executescript(sql)
@@ -2031,6 +2058,7 @@ def run_migrations(db: DatabasePool) -> None:
     _ensure_published_experts_schema(db)
     _ensure_usage_cache_schema(db)
     _ensure_user_invites_schema(db)
+    _ensure_invite_usage_schema(db)
     _ensure_thread_message_projection_schema(db)
     _ensure_cron_jobs_schema(db)
     _ensure_trajectory_events_schema(db)

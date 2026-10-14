@@ -11,6 +11,7 @@ import {
   Popconfirm,
   Space,
   Spin,
+  Switch,
   Tag,
   Typography,
 } from "antd";
@@ -41,6 +42,9 @@ import styles from "./index.module.less";
 const { Text } = Typography;
 
 const PAGE_SIZE = 5;
+
+/** Default number of registrations offered for a fresh invite link. */
+const DEFAULT_MAX_USES = 10;
 
 const STATUS_COLOR: Record<InviteStatus, string> = {
   pending: "processing",
@@ -79,7 +83,10 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
     note?: string;
     expires_in_days: number;
     role?: string;
+    max_uses: number;
+    unlimited: boolean;
   }>();
+  const unlimited = Form.useWatch("unlimited", form);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -104,11 +111,18 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
           expires_in_days: 7,
           note: undefined,
           role: presetInviteRoleId(loaded, actorIsAdmin),
+          max_uses: DEFAULT_MAX_USES,
+          unlimited: false,
         });
       })
       .catch((err) => {
         setRoles([]);
-        form.setFieldsValue({ expires_in_days: 7, note: undefined });
+        form.setFieldsValue({
+          expires_in_days: 7,
+          note: undefined,
+          max_uses: DEFAULT_MAX_USES,
+          unlimited: false,
+        });
         message.error(apiErrorMessage(err, t("adminUsers.roleLoadFailed"), t));
       });
   }, [actorIsAdmin, open, form, refresh, t]);
@@ -128,6 +142,8 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
     note?: string;
     expires_in_days: number;
     role?: string;
+    max_uses: number;
+    unlimited: boolean;
   }) => {
     setCreating(true);
     try {
@@ -135,12 +151,15 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
         note: values.note?.trim() || null,
         expires_in_days: values.expires_in_days,
         role: values.role,
+        max_uses: values.unlimited ? null : values.max_uses,
       });
       message.success(t("adminUsers.inviteCreateSuccess"));
       form.setFieldsValue({
         note: undefined,
         expires_in_days: 7,
         role: presetInviteRoleId(roles, actorIsAdmin),
+        max_uses: DEFAULT_MAX_USES,
+        unlimited: false,
       });
       setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       setPage(1);
@@ -267,6 +286,35 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
         >
           <InputNumber min={1} max={90} style={{ width: "100%" }} />
         </Form.Item>
+        <Form.Item
+          name="max_uses"
+          label={t("adminUsers.inviteMaxUses")}
+          extra={t("adminUsers.inviteMaxUsesHint")}
+          rules={
+            unlimited
+              ? []
+              : [
+                  {
+                    required: true,
+                    message: t("adminUsers.inviteMaxUsesRequired"),
+                  },
+                ]
+          }
+        >
+          <InputNumber
+            min={1}
+            max={1000}
+            disabled={unlimited}
+            style={{ width: "100%" }}
+          />
+        </Form.Item>
+        <Form.Item
+          name="unlimited"
+          label={t("adminUsers.inviteUnlimited")}
+          valuePropName="checked"
+        >
+          <Switch />
+        </Form.Item>
         <Button
           type="primary"
           htmlType="submit"
@@ -308,6 +356,16 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
                         {t(`adminUsers.inviteStatus.${row.status}`)}
                       </Tag>
                       <Text code>{row.code}</Text>
+                      <Text type="secondary">
+                        {row.max_uses === null
+                          ? t("adminUsers.inviteUsedUnlimited", {
+                              used: row.used_count,
+                            })
+                          : t("adminUsers.inviteUsedCount", {
+                              used: row.used_count,
+                              max: row.max_uses,
+                            })}
+                      </Text>
                     </Space>
                     <Space size={4}>
                       <Button
