@@ -14,6 +14,7 @@
 #   PIP_TRUSTED_HOST=mirrors.cloud.tencent.com \
 #   NPM_REGISTRY=https://mirrors.cloud.tencent.com/npm/ \
 #   APT_MIRROR=mirrors.cloud.tencent.com \
+#   PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright \
 #   bash docker/docker_build.sh
 #
 # 或直接传 build-arg:
@@ -119,6 +120,17 @@ COPY .env.example ./
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Declared right before the step that uses it: an ARG declared earlier in the
+# stage would invalidate every later layer's cache (a full re-download of the
+# Python dependency set) whenever the mirror changes.
+ARG PLAYWRIGHT_DOWNLOAD_HOST=
+
+# Playwright Chromium + its system libraries are baked in here, not fetched at
+# runtime. The in-app installer writes them into the container's writable layer,
+# so any ``docker compose up -d`` recreate silently wipes them and every account
+# (admin included) then fails with "chrome: error while loading shared
+# libraries". ``--with-deps`` pulls the apt runtime libs (libnss3, libgbm, ...)
+# alongside the browser under PLAYWRIGHT_BROWSERS_PATH.
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ -n "$PIP_INDEX_URL" ]; then \
         export UV_INDEX_URL="$PIP_INDEX_URL"; \
@@ -127,6 +139,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     && uv sync --frozen --no-dev --extra browser \
     && apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk \
     && apt-get purge -y --auto-remove build-essential \
+    && if [ -n "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_DOWNLOAD_HOST"; fi \
+    && playwright install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /tmp/*
 
 RUN mkdir -p /data/.octop

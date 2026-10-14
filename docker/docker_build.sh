@@ -44,6 +44,9 @@ fi
 if [ -n "${APT_MIRROR:-}" ]; then
     BUILD_ARGS+=(--build-arg "APT_MIRROR=${APT_MIRROR}")
 fi
+if [ -n "${PLAYWRIGHT_DOWNLOAD_HOST:-}" ]; then
+    BUILD_ARGS+=(--build-arg "PLAYWRIGHT_DOWNLOAD_HOST=${PLAYWRIGHT_DOWNLOAD_HOST}")
+fi
 
 echo "╔══════════════════════════════════════════════════╗"
 echo "║  正在构建 Octop Docker 镜像                      ║"
