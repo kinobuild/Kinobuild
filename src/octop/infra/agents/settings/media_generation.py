@@ -12,6 +12,9 @@ from urllib.parse import urlsplit, urlunsplit
 import httpx
 
 from octop.infra.agents.settings.openai_media_provider import register_openai_media_provider
+from octop.infra.agents.settings.replicate_media_provider import (
+    register_replicate_media_provider,
+)
 from octop.infra.connectors.crypto import decrypt_credentials, encrypt_credentials
 from octop.infra.db.repos.secrets import SecretRepo
 from octop.infra.db.repos.settings import SettingsRepo
@@ -23,8 +26,9 @@ if TYPE_CHECKING:
 # 把 OpenAI 兼容适配器注册进 harness 注册表。必须在任何 create_media_manager 之前
 # 执行，所以放在本模块的导入期——本模块是所有媒体路径的必经入口。
 register_openai_media_provider()
+register_replicate_media_provider()
 
-MediaProviderName = Literal["volcengine", "dashscope", "minimax", "openai"]
+MediaProviderName = Literal["volcengine", "dashscope", "minimax", "openai", "replicate"]
 MediaTestKind = Literal["image", "video"]
 
 DEFAULT_PROVIDER_ID = "volcengine-default"
@@ -121,6 +125,15 @@ MEDIA_PROVIDER_PRESETS: dict[MediaProviderName, MediaProviderPreset] = {
         # image_model 本身是自由字符串，用户可以直接填中转站公布的模型名。
         image_models=("gpt-image-1", "gpt-image-2.5", "dall-e-3"),
         # 该适配器只做图像；视频留空，前端据此不展示视频选项。
+        video_models=(),
+    ),
+    "replicate": MediaProviderPreset(
+        provider="replicate",
+        display_name="Replicate",
+        base_url="https://api.replicate.com/v1",
+        # 用 owner/name 形式；适配器按 /models/{owner}/{name}/predictions 提交。
+        image_models=("openai/gpt-image-2", "google/nano-banana"),
+        # 同样只做图像。
         video_models=(),
     ),
 }
@@ -246,6 +259,10 @@ def _probe_url(provider: MediaProviderName, base_url: str) -> str:
         return urlunsplit((parsed.scheme, parsed.netloc, "/ping", "", ""))
     if provider == "dashscope":
         return f"{base}/models?page_no=1&page_size=1"
+    if provider == "replicate":
+        # 通用做法是 GET /v1/models（不需要鉴权），验不到 key；账户端点才校验令牌。
+        parsed = urlsplit(base)
+        return urlunsplit((parsed.scheme, parsed.netloc, "/v1/account", "", ""))
     return f"{base}/models" if base.endswith("/v1") else f"{base}/v1/models"
 
 
