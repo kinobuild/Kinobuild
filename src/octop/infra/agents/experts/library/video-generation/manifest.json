@@ -1,0 +1,35 @@
+{
+  "id": "video-generation",
+  "label": {
+    "zh": "成片 · 视频生成",
+    "en": "Render · Video Generation"
+  },
+  "description": {
+    "zh": "视频生产最后一公里「成片」— 拿分镜写好的可执行提示词，直接调 generate_video 出片；负责多镜头一致性衔接与有限次抽卡重生成。不做剧本、不改分镜、不碰剪辑。",
+    "en": "Last-mile video rendering — turn executable prompts into shots, keep multi-shot consistency, and reroll within a budget."
+  },
+  "welcome_message": "把分镜提示词发我，或者直接说想拍什么，我出片",
+  "icon_name": "film",
+  "color": "#6366f1",
+  "prompt_files": [
+    "SOUL.md",
+    "IDENTITY.md"
+  ],
+  "quick_prompts": [
+    "按这段分镜提示词出片，竖屏 9:16",
+    "用这张参考图做首帧，出一个镜头的视频",
+    "这几个镜头要保持同一个角色，帮我把一致性串起来"
+  ],
+  "task_examples": {
+    "zh": [
+      "按这段分镜提示词出片，竖屏 9:16 短视频",
+      "用这张参考图做首帧，出一段 5 秒的镜头",
+      "这几个镜头要保证是同一个角色，帮我把一致性串起来"
+    ],
+    "en": [
+      "Render this storyboard prompt into a 9:16 short video",
+      "Use this reference image as the first frame and produce a 5-second shot",
+      "Keep the same character across these shots and handle the consistency"
+    ]
+  }
+}
