@@ -8,18 +8,18 @@
 
 <p align="center">
   <a href="https://trendshift.io/repositories/95504?utm_source=repository-badge&utm_medium=badge&utm_campaign=badge-repository-95504" target="_blank" rel="noopener noreferrer">
-    <img src="https://trendshift.io/api/badge/repositories/95504" alt="TencentCloud/KinoGuild | Trendshift" width="250" height="55" />
+    <img src="https://trendshift.io/api/badge/repositories/95504" alt="kinobuild/Kinobuild | Trendshift" width="250" height="55" />
   </a>
 </p>
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/KinoGuild/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
-  <a href="https://github.com/TencentCloud/KinoGuild/releases"><img alt="Version" src="https://img.shields.io/badge/version-1.0.2b7-orange" /></a>
+  <a href="https://github.com/kinobuild/Kinobuild/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://github.com/kinobuild/Kinobuild/releases"><img alt="Version" src="https://img.shields.io/badge/version-1.0.2b8-orange" /></a>
   <a href="https://pypi.org/project/octop/"><img src="https://img.shields.io/pypi/v/octop" alt="PyPI" /></a>
   <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/KinoGuild"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TencentCloud/KinoGuild?style=social" /></a>
-  <a href="https://github.com/TencentCloud/KinoGuild/fork"><img alt="GitHub forks" src="https://img.shields.io/github/forks/TencentCloud/KinoGuild?style=social" /></a>
+  <a href="https://github.com/kinobuild/Kinobuild"><img alt="GitHub stars" src="https://img.shields.io/github/stars/kinobuild/Kinobuild?style=social" /></a>
+  <a href="https://github.com/kinobuild/Kinobuild/fork"><img alt="GitHub forks" src="https://img.shields.io/github/forks/kinobuild/Kinobuild?style=social" /></a>
   <a href="https://discord.gg/QnWdhJxq9h"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join%20Us-5865F2?logo=discord&logoColor=white" /></a>
 </p>
 
@@ -222,7 +222,7 @@ curl -fsSL https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/octop/install
 
 See [scripts/README.md](scripts/README.md) for all install options (`--version`, `--from-source`, `--mirror`, Windows flags).
 
-**Desktop app** (GUI, no terminal) — grab the artifact for your platform from [GitHub Releases](https://github.com/TencentCloud/KinoGuild/releases/latest):
+**Desktop app** (GUI, no terminal) — grab the artifact for your platform from [GitHub Releases](https://github.com/kinobuild/Kinobuild/releases/latest):
 
 | Platform | Artifact |
 |----------|----------|
@@ -278,6 +278,9 @@ Open **http://127.0.0.1:8088**. With Docker, a valid `OCTOP_DEFAULT_PASSWORD` cr
 # Build and start
 docker compose -f docker/docker-compose.yml up -d
 
+# China mirror when ghcr.io is unreachable (no local build)
+docker compose -f docker/docker-compose.cn.yml up -d
+
 # Or build manually
 bash docker/docker_build.sh
 docker run -d \
@@ -300,6 +303,14 @@ Open `http://localhost:8088`. A valid `OCTOP_DEFAULT_PASSWORD` creates the admin
 | `OCTOP_DATA` | `~/.octop` | Host data directory (compose bind mount) |
 
 See [`.env.example`](.env.example) for the full list.
+
+### Deploy with Cloud
+
+<p>
+  <a href="https://buy.cloud.tencent.com/lighthouse?blueprintType=APP_OS&blueprintOfficialId=lhbp-nxq7695q&regionId=1&zone=ap-guangzhou-6&bundleId=bundle_rs_mc_med2_01&loginSet=AUTO_PASSWORD&goodsNum=0&from=lh-console"><img alt="Deploy on Lighthouse" width="194" height="49" src="docs/assets/deploy-on-lighthouse.png" /></a><br>
+  <a href="https://buy.cloud.tencent.com/cvm?tab=custom&step=1&devPayMode=monthly&regionId=1&zoneId=100007&instanceType=SA9.64XLARGE1152&supportConfidentiality=false&platform=TencentOS&imageId=img-n3gxkolf&systemDiskType=CLOUD_HSSD&systemDiskSize=100&systemDiskBackupQuota=0&isBackup=false&backupDiskType=ALL&backupDiskCustomizeValue=&backupQuotaSegment=1&backupQuota=1&wanIp=0&loginSet=BIND_SSH_KEY&tags=null&templateCreateMode=createLt"><img alt="Deploy on CVM" width="194" height="49" src="docs/assets/deploy-on-cvm.png" /></a><br>
+  <a href="https://zenith.hosting/host/octop"><img alt="Deploy with Zenith" width="194" height="49" src="https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg" /></a>
+</p>
 
 ## 📑 Contents
 
@@ -336,7 +347,7 @@ See [`.env.example`](.env.example) for the full list.
 | Local script | macOS / Linux | `bash scripts/install.sh` |
 | Local script | Windows | `scripts\install.bat` or `install.ps1` |
 | PyPI | Any | `pip install octop` (optional extras such as `local-embedding`) |
-| Docker | Any | `docker/docker-compose.yml` |
+| Docker | Any | `docker/docker-compose.yml`; China mirror: `docker/docker-compose.cn.yml` |
 
 All install scripts provision an isolated environment at `~/.octop/venv` and a `~/.octop/bin/octop` wrapper — they do not touch system Python.
 
