@@ -2480,7 +2480,7 @@
 
     let memoryDirHandle = null;
     let memoryData = {
-      claudeMd: null,
+      memoryMd: null,
       memoryFiles: [],
       memoryDirs: {}
     };
@@ -2576,13 +2576,13 @@
       try {
         memoryDirHandle = await window.showDirectoryPicker();
 
-        memoryData = { claudeMd: null, memoryFiles: [], memoryDirs: {} };
+        memoryData = { memoryMd: null, memoryFiles: [], memoryDirs: {} };
 
         try {
-          const claudeFileHandle = await memoryDirHandle.getFileHandle('CLAUDE.md');
-          const file = await claudeFileHandle.getFile();
-          memoryData.claudeMd = { content: await file.text(), fileHandle: claudeFileHandle };
-        } catch (e) { console.log('No CLAUDE.md found'); }
+          const memoryFileHandle = await memoryDirHandle.getFileHandle('MEMORY.md');
+          const file = await memoryFileHandle.getFile();
+          memoryData.memoryMd = { content: await file.text(), fileHandle: memoryFileHandle };
+        } catch (e) { console.log('No MEMORY.md found'); }
 
         try {
           const memoryDir = await memoryDirHandle.getDirectoryHandle('memory');
@@ -2633,13 +2633,13 @@
     function renderMemoryTabs() {
       let html = '';
 
-      if (memoryData.claudeMd) {
+      if (memoryData.memoryMd) {
         html += `<button class="memory-tab active" data-tab="overview">Overview</button>`;
       }
 
       for (const file of memoryData.memoryFiles) {
         const name = file.name.replace('.md', '');
-        html += `<button class="memory-tab${!memoryData.claudeMd && memoryData.memoryFiles[0] === file ? ' active' : ''}" data-tab="file-${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+        html += `<button class="memory-tab${!memoryData.memoryMd && memoryData.memoryFiles[0] === file ? ' active' : ''}" data-tab="file-${escapeHtml(name)}">${escapeHtml(name)}</button>`;
       }
 
       for (const dirName of Object.keys(memoryData.memoryDirs).sort()) {
@@ -2693,7 +2693,7 @@
     }
 
     function renderMemoryOverview() {
-      if (!memoryData.claudeMd) return;
+      if (!memoryData.memoryMd) return;
 
       let statsHtml = '<div class="stats">';
       for (const [dirName, files] of Object.entries(memoryData.memoryDirs)) {
@@ -2722,18 +2722,18 @@
       }
       statsHtml += '</div>';
 
-      const claudeContent = renderMarkdownToHtml(memoryData.claudeMd.content);
+      const memoryContent = renderMarkdownToHtml(memoryData.memoryMd.content);
 
       memoryContentContainer.innerHTML = `
         ${statsHtml}
         <div class="file-card">
           <div class="file-card-header" onclick="this.nextElementSibling.classList.toggle('expanded'); this.querySelector('.toggle').textContent = this.nextElementSibling.classList.contains('expanded') ? '\u2212' : '+'">
-            <span class="file-card-title">CLAUDE.md</span>
+            <span class="file-card-title">MEMORY.md</span>
             <span class="toggle" style="color: var(--text-muted);">&minus;</span>
           </div>
-          <div class="file-card-content expanded markdown-content">${claudeContent}</div>
+          <div class="file-card-content expanded markdown-content">${memoryContent}</div>
         </div>
-        <button onclick="openEditModal('CLAUDE.md', 'claudeMd')" style="margin-top: 10px;">Edit CLAUDE.md</button>
+        <button onclick="openEditModal('MEMORY.md', 'memoryMd')" style="margin-top: 10px;">Edit MEMORY.md</button>
       `;
     }
 
@@ -2993,8 +2993,8 @@
 
     function openEditModal(fileName, type) {
       let content = '';
-      if (type === 'claudeMd') {
-        content = memoryData.claudeMd.content;
+      if (type === 'memoryMd') {
+        content = memoryData.memoryMd.content;
       } else if (type === 'memoryFile') {
         const file = memoryData.memoryFiles.find(f => f.name === fileName);
         if (file) content = file.content;
@@ -3022,12 +3022,12 @@
       const content = document.getElementById('editContent').value;
 
       try {
-        if (type === 'claudeMd') {
-          memoryData.claudeMd.content = content;
-          const writable = await memoryData.claudeMd.fileHandle.createWritable();
+        if (type === 'memoryMd') {
+          memoryData.memoryMd.content = content;
+          const writable = await memoryData.memoryMd.fileHandle.createWritable();
           await writable.write(content);
           await writable.close();
-          showStatus('Saved CLAUDE.md');
+          showStatus('Saved MEMORY.md');
 
         } else if (type === 'memoryFile') {
           const fileName = modalOverlay.dataset.fileName;

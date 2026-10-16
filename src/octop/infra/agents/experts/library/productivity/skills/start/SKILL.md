@@ -15,7 +15,7 @@ Initialize the task and memory systems, then open the unified dashboard.
 
 Check the working directory for:
 - `TASKS.md` — task list
-- `CLAUDE.md` — working memory
+- `MEMORY.md` — working memory
 - `memory/` — deep memory directory
 - `dashboard.html` — the visual UI
 
@@ -23,9 +23,9 @@ Check the working directory for:
 
 **If `TASKS.md` doesn't exist:** Create it with the standard template (see task-management skill). Place it in the current working directory.
 
-**If `dashboard.html` doesn't exist:** Copy it from `${CLAUDE_PLUGIN_ROOT}/skills/dashboard.html` to the current working directory.
+**If `dashboard.html` doesn't exist:** Copy it from `skills/dashboard.html` to the current working directory.
 
-**If `CLAUDE.md` and `memory/` don't exist:** This is a fresh setup — after opening the dashboard, begin the memory bootstrap workflow (see below). Place these in the current working directory.
+**If `MEMORY.md` and `memory/` don't exist:** This is a fresh setup — after opening the dashboard, begin the memory bootstrap workflow (see below). Place these in the current working directory.
 
 ### 3. Open the Dashboard
 
@@ -44,7 +44,7 @@ If memory hasn't been bootstrapped yet, continue to step 5.
 
 ### 5. Bootstrap Memory (First Run Only)
 
-Only do this if `CLAUDE.md` and `memory/` don't exist yet.
+Only do this if `MEMORY.md` and `memory/` don't exist yet.
 
 The best source of workplace language is the user's actual task list. Real tasks = real shorthand.
 
@@ -107,7 +107,7 @@ Build a braindump of people, projects, and terms found. Present findings grouped
 
 From everything gathered, create:
 
-**CLAUDE.md** (working memory, ~50-80 lines):
+**MEMORY.md** (working memory, ~50-80 lines):
 ```markdown
 # Memory
 

@@ -28,7 +28,7 @@
         "en": "Keep AI focused across long tasks"
       },
       "prompt": {
-        "zh": "我在长任务里总感觉 AI 越聊越乱、遗漏上下文。请给我一套上下文管理的具体技巧（CLAUDE.md、子代理、文件引用、压缩策略等）。",
+        "zh": "我在长任务里总感觉 AI 越聊越乱、遗漏上下文。请给我一套上下文管理的具体技巧（AGENTS.md / MEMORY.md、子代理、文件引用、压缩策略等）。",
         "en": "Give me concrete context-management techniques for long AI coding sessions."
       },
       "color": "#dbeafe",

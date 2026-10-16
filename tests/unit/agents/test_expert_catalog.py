@@ -266,6 +266,49 @@ def test_bundled_office_automation_discovers_skills() -> None:
     assert "DOCX" in docx_skill
 
 
+def test_suppressed_expert_is_off_the_shelf_but_still_resolvable() -> None:
+    """Bundled templates KinoGuild must not advertise are held back at the listing.
+
+    They stay loaded so an agent created before the suppression keeps resolving
+    ``get``/``expert_dir``; only ``list_summaries`` — the library card list and
+    ``octop expert list`` — drops them. The ids live in code rather than in each
+    upstream ``manifest.json`` so a later merge cannot re-publish a card by
+    rewriting that file, which is the whole point of suppressing one.
+    """
+    from octop.infra.agents.experts.catalog import (
+        _SUPPRESSED_EXPERT_IDS,
+        ExpertCatalog,
+        default_library_root,
+    )
+
+    assert _SUPPRESSED_EXPERT_IDS, "empty suppression list would make this test vacuous"
+
+    catalog = ExpertCatalog(default_library_root())
+    catalog.refresh()
+    listed = {summary.id for summary in catalog.list_summaries(include_market_cache=True)}
+
+    for expert_id in _SUPPRESSED_EXPERT_IDS:
+        assert catalog.get(expert_id) is not None, f"{expert_id} must still resolve"
+        assert expert_id not in listed, f"{expert_id} must not be offered in the library"
+
+
+def test_suppression_cannot_hide_an_expert_that_is_not_bundled() -> None:
+    """A stale id would silently shrink nothing; catch it instead."""
+    from octop.infra.agents.experts.catalog import (
+        _SUPPRESSED_EXPERT_IDS,
+        ExpertCatalog,
+        default_library_root,
+    )
+
+    catalog = ExpertCatalog(default_library_root())
+    catalog.refresh()
+
+    for expert_id in _SUPPRESSED_EXPERT_IDS:
+        assert expert_id in catalog._bundled_ids, (
+            f"{expert_id} 已不在内置库中，抑制名单该删掉这一项了"
+        )
+
+
 def test_expert_quick_prompts_from_manifest(tmp_path: Path) -> None:
     from octop.infra.agents.experts.catalog import ExpertCatalog
 

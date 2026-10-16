@@ -35,6 +35,17 @@ WORKSPACE_MANIFEST_PATH = f"{DEFAULT_SYSTEM_FILES_PATH}/{MANIFEST_FILENAME}"
 # Prefer system path; keep root ``manifest.json`` readable for pre-migration agents.
 _WORKSPACE_MANIFEST_READ_PATHS = (WORKSPACE_MANIFEST_PATH, MANIFEST_FILENAME)
 
+# Bundled templates that stay on disk but are never advertised in the library.
+# Upstream ships experts written *for* the Claude Code / Cowork ecosystem:
+# ``cowork-plugin-management``'s only deliverable is a Claude plugin package,
+# which its own SOUL.md says is consumed by Claude rather than by us — a user
+# who picks it spends a session producing something KinoGuild cannot run.
+# Listing the ids in code instead of setting a flag in each upstream
+# ``manifest.json`` is deliberate: a later merge that rewrites that file cannot
+# silently re-publish the card. Suppressed experts stay resolvable through
+# :meth:`ExpertCatalog.get`, so agents already created from one keep working.
+_SUPPRESSED_EXPERT_IDS = frozenset({"cowork-plugin-management"})
+
 # Bundled illustrated portraits live in the dashboard public assets tree.
 _BUILTIN_AVATAR_URL_TEMPLATE = "/experts/avatars/{expert_id}.svg"
 
@@ -844,12 +855,15 @@ class ExpertCatalog:
         By default only **bundled** templates (primary library root) are listed.
         SkillHub installs are cached under ``expert_market/`` for create/install,
         but they belong in the market tab (``/experts/hub``), not the builtin
-        library tab.
+        library tab. Ids in :data:`_SUPPRESSED_EXPERT_IDS` are held back here too
+        while remaining resolvable through :meth:`get`.
         """
         summaries: list[ExpertSummary] = []
         for expert in self._experts.values():
             ex_id = expert.summary.id
             if ex_id == "default":
+                continue
+            if ex_id in _SUPPRESSED_EXPERT_IDS:
                 continue
             if not include_market_cache and ex_id not in self._bundled_ids:
                 continue

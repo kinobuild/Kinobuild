@@ -48,7 +48,12 @@ def _content_roots() -> tuple[Path, ...]:
 
 
 #: Text file types that carry prose. Anything else (icons, fonts) cannot.
-_TEXT_SUFFIXES = frozenset({".md", ".json", ".py", ".js", ".ts", ".txt", ".yaml", ".yml"})
+#: ``.html`` is here because a bundled skill ships a generated board
+#: (``productivity/skills/dashboard.html``) that renders file names and button
+#: labels straight to the user — prose absolutely lives in that extension, and
+#: leaving it out hid a ``CLAUDE.md`` reference from the first version of this
+#: scan.
+_TEXT_SUFFIXES = frozenset({".md", ".json", ".py", ".js", ".ts", ".txt", ".yaml", ".yml", ".html"})
 
 #: ``Octop``/``OCTOP`` as a standalone word. Deliberately case-sensitive: the
 #: lowercase form is how the package, the ``octop`` command, ``~/.octop/`` and
@@ -142,3 +147,63 @@ def test_allowlist_does_not_excuse_a_second_mention_on_the_same_line() -> None:
     """The allowlist is phrase-level: an unrelated mention still fails."""
     line = "运行时是 Octop Harness，而 Octop 是本产品的新名字"
     assert _BRAND_RE.search(_without_allowed_mentions(line))
+
+
+#: Templates merged from upstream were written *for* Claude's own tooling, and
+#: two concrete forms of that ship into a KinoGuild install: a file the agent is
+#: told to create inside the user's workspace (``CLAUDE.md`` — our platform's own
+#: working-memory file is ``MEMORY.md``), and a path variable that no KinoGuild
+#: runtime substitutes (``${CLAUDE_PLUGIN_ROOT}``), which silently breaks every
+#: skill that uses it. Both are matched by exact token rather than as a bare
+#: word: ``Claude Code`` legitimately appears as one of the tools the coding
+#: coach compares, so a broad scan would teach agents to ignore the finding.
+_CLAUDE_TOKEN_RE = re.compile(r"CLAUDE\.md|CLAUDE_PLUGIN_ROOT")
+
+
+def _shipped_expert_files() -> list[Path]:
+    """Content a KinoGuild user can reach — the library minus suppressed experts.
+
+    Suppressed templates (``catalog._SUPPRESSED_EXPERT_IDS``) stay on disk so
+    agents already created from them keep resolving, but they are not offered to
+    new users, so their prose is not shipped copy. Reading the list from the
+    catalog instead of hard-coding it here means ③ and this guard cannot drift
+    apart: hiding an expert automatically stops scanning its text, and un-hiding
+    it automatically puts it back under the check.
+    """
+    from octop.infra.agents.experts.catalog import _SUPPRESSED_EXPERT_IDS
+
+    files: list[Path] = []
+    for path in _content_files():
+        parts = path.parts
+        if "library" in parts:
+            index = parts.index("library")
+            if len(parts) > index + 1 and parts[index + 1] in _SUPPRESSED_EXPERT_IDS:
+                continue
+        files.append(path)
+    return files
+
+
+def test_shipped_copy_never_names_competitor_files_or_paths() -> None:
+    offenders: list[str] = []
+    for path in _shipped_expert_files():
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if _CLAUDE_TOKEN_RE.search(line):
+                offenders.append(f"{path}:{lineno}: {line.strip()}")
+
+    assert not offenders, (
+        "交付内容里出现了 Claude 专属的文件名或路径变量——模型会照着在用户工作区"
+        "创建以竞品命名的文件，或拼出一个永远解析不到的路径：\n"
+        + "\n".join(offenders)
+        + "\n\n工作记忆文件改用平台的 MEMORY.md；技能内引用改用工作区相对路径"
+        "（例如 skills/dashboard.html）。若这个专家本就不该上架，把它加进 "
+        "catalog._SUPPRESSED_EXPERT_IDS，本扫描会自动跳过它。"
+    )
+
+
+def test_competitor_scan_reaches_generated_html_boards() -> None:
+    """Guard the guard: the generated ``.html`` board is where this hid first."""
+    files = _shipped_expert_files()
+    assert len(files) > 50, f"only {len(files)} files scanned"
+    assert "dashboard.html" in {path.name for path in files}, (
+        "生成的看板不在扫描范围内——CLAUDE.md 曾正好藏在它里面"
+    )
