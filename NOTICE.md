@@ -72,10 +72,64 @@ CLI 配置指导对他们不适用。
 需要通过 `DELETE /api/agents/{agent_id}/skills/octop-assistant` 软删除
 （写 `removed: true` 标记，列表即不再显示）。
 
+## 8. 新增：知识工作专家模板（来源 Apache-2.0）
+
+上游在本仓库中加入了四个专家模板，`manifest.json` 自带来源标记
+`{"type": "knowledge-work-plugins", "plugin": "<名称>"}`：
+
+- `productivity`、`design`、`engineering`、`cowork-plugin-management`
+
+**来源与许可**：`https://github.com/anthropics/knowledge-work-plugins`，
+**Apache License 2.0**（官方仓库根目录 `LICENSE`，且 `productivity/`、
+`cowork-plugin-management/` 各自带有同版本的 `LICENSE` 文件）。
+Apache-2.0 允许修改与再分发，条件是随附许可副本并注明改动 ——
+官方转换进本仓库时没有把 `LICENSE` 带过来，本节即为补齐。
+
+**本仓库对其中两份做的修改**（Apache-2.0 §4(b) 要求注明）：
+
+- `library/productivity/`（6 个文件）：把技能里要求在工作区创建的
+  `CLAUDE.md` 一律改为本平台的 `MEMORY.md`；`${CLAUDE_PLUGIN_ROOT}/skills/dashboard.html`
+  改为工作区相对路径 `skills/dashboard.html`（该变量在本平台没有任何地方注入，
+  原样保留会让技能里那一步永远失败）；技能正文中以第三方产品名自称的措辞改为
+  中性表述；`skills/dashboard.html` 内与之配对的 JS 标识符同步改名。
+- `library/ai-coding-coach/`（3 个文件）：同样把 `CLAUDE.md` 改为
+  `AGENTS.md` / `MEMORY.md`。该专家正文中把「Claude Code」等作为**评测对象**
+  提及的内容未作改动 —— 那是它的职责所在。
+
+## 9. 办公文档技能：第三方 source-available，本仓库未修改
+
+`library/office-automation/skills/{docx,xlsx,pptx,pdf}/`（186 个文件）来自
+`https://github.com/anthropics/skills` 的文档技能。**这些目录不是开源代码**：
+官方 README 明确写为 *source-available, not open source*，每个目录内自带
+`LICENSE.txt`（© 2025 Anthropic, PBC），其中禁止制作衍生作品与再分发。
+
+因此：
+
+- 本仓库**没有修改**这些文件，逐字节与上游一致（`pack.py`、`LICENSE.txt`
+  的 SHA 已核对）。第 1 节的整体 MIT 声明**不覆盖**这几个目录，
+  它们的许可以目录内的 `LICENSE.txt` 为准。
+- 需要调整它们的行为时，改 `office-automation/SOUL.md`（在受限目录之外，
+  归本仓库管辖），不要改技能文件本身 —— 见第 10 节。
+- 商用适配性由本项目方另行核实；本节只作事实标注。
+
+## 10. 修改：办公专家交付文档的署名规则
+
+`library/office-automation/SOUL.md` 增加一条 sign-off 规则：交付文档的修订与
+批注必须显式署名（`--author` / `--initials` / `w:author` 由模型自己填），
+不得沿用受限技能脚本的内置默认值或示例里的占位名；`w:date` 用真实时间。
+
+**原因**：`docx` 技能的脚本与示例把作者默认值写成了第三方产品名，
+用户导出的 `.docx` 在 Word 的审阅窗格里会显示那个名字。那些文件受第 9 节的
+许可约束不能改，所以在专家层拦住。
+
 ## 版权归属
 
 - 基础代码：Copyright (c) 2026 Octop（Tencent Cloud）— 完整 MIT 文本见 `LICENSE`
 - 本仓库的修改：Copyright (c) 2026 kinobuild
+- **例外**：`library/office-automation/skills/{docx,xlsx,pptx,pdf}/` 按其目录内
+  `LICENSE.txt`（Anthropic source-available）分发，不在上述 MIT 声明范围内；
+  `library/{productivity,design,engineering,cowork-plugin-management}/` 的原始
+  材料为 Apache-2.0（见第 8 节）。
 
 MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一并授予。
 
@@ -91,6 +145,9 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
 3. **跑品牌兜底测试**：`pytest tests/unit/agents/test_content_branding.py`。
    它覆盖后端 i18n、专家与插件模板、前端 `dashboard/src/locales/`、
    连接器描述 `src/octop/infra/connectors/catalog.json`，命中上游品牌名即失败。
+   同一文件还守**竞品痕迹**（`CLAUDE.md`、`${CLAUDE_PLUGIN_ROOT}`）：上游会把
+   为 Claude 生态写的模板直接搬进来，这类内容会让模型在**用户的工作区**里创建
+   竞品命名的文件，界面上用户看得见。
 4. **核对锁文件**：`pytest tests/unit/test_lockfile_matches_pyproject.py`。
    上游抬高了 `pyproject.toml` 里 `octop-*` 的下限，而合并冲突很容易把
    `uv.lock` 解成我们的旧版；`docker/Dockerfile` 用 `uv sync --frozen`，
@@ -99,6 +156,18 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
    首启向导横幅（`src/octop/infra/server.py`）、飞书机器人问候语
    （`src/octop/infra/gateway/bot_creators/`），以及前端里硬编码的字符串。
    这几处目前没有人守，只能靠人看。
+6. **复核专家抑制名单**：`src/octop/infra/agents/experts/catalog.py` 的
+   `_SUPPRESSED_EXPERT_IDS`。上游新带的专家如果在本平台交付不出可用产物
+   （例如只产出一个 Claude 插件包的 `cowork-plugin-management`），把 id 加进
+   名单，**不要改那个专家自己的 `manifest.json`** —— 改了下次合并会被上游覆盖，
+   卡片会悄悄重新上架。名单同时决定第 3 步竞品扫描的范围：被抑制的专家不对外
+   提供，其文案因此不在检查之列。
 
-第 2～4 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
+第 2～4 步和第 6 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
 必须把锁文件一起同步到服务器（见 `DEPLOY.md` 第 3.5 节）。
+
+**许可核对**：上游每次带进第三方技能，先看它目录里有没有 `LICENSE.txt`，再决定
+能不能改。`anthropics/skills` 是**混合许可**仓库 —— 大部分技能是 Apache-2.0
+（可改、可分发，需保留声明），但 `docx`/`xlsx`/`pptx`/`pdf` 这四个文档技能是
+source-available，明文禁止衍生作品与再分发（见第 9 节）。撞见后者的正确做法是
+**在专家层（`SOUL.md`）拦住行为，不动技能文件本身**。
