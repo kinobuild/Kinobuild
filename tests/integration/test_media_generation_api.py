@@ -93,6 +93,7 @@ async def test_media_provider_presets_include_all_p0_adapters(
         "dashscope",
         "minimax",
         "openai",
+        "replicate",
     ]
     presets = {item["provider"]: item for item in response.json()}
     assert "doubao-seedream-5-0-pro-260628" in presets["volcengine"]["image_models"]
@@ -104,3 +105,8 @@ async def test_media_provider_presets_include_all_p0_adapters(
     # OpenAI 兼容适配器只做图像，所以预设里不该出现视频模型。
     assert presets["openai"]["image_models"], "openai 预设应给出可用的图像模型起点"
     assert presets["openai"]["video_models"] == []
+    # Replicate 适配器同样只做图像。模型必须写成 owner/name —— 适配器按
+    # /models/{owner}/{name}/predictions 提交，裸名字会 404。
+    assert presets["replicate"]["image_models"], "replicate 预设应给出可用的图像模型起点"
+    assert "openai/gpt-image-2" in presets["replicate"]["image_models"]
+    assert presets["replicate"]["video_models"] == []

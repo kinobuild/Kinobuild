@@ -6,7 +6,7 @@ import json
 import re
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -323,6 +323,9 @@ async def verify_media_model(
 ) -> dict[str, object]:
     """Submit one provider-neutral model probe through the harness adapter."""
     from octop_harness import MediaProviderConfig  # noqa: PLC0415
+    from octop_harness.config import (  # noqa: PLC0415
+        MediaProviderName as HarnessMediaProviderName,
+    )
     from octop_harness.media import (  # noqa: PLC0415
         ImageGenerationRequest,
         MediaGenerationError,
@@ -332,7 +335,12 @@ async def verify_media_model(
 
     config = MediaProviderConfig(
         id=item.id,
-        provider=item.provider,
+        # harness 的 ``MediaProviderName`` 只列了内置三家；``openai`` / ``replicate``
+        # 是我们在导入期注入它两张注册表的（见 ``register_openai_media_provider`` 与
+        # ``register_replicate_media_provider``），所以运行时 ``__post_init__`` 的白名单
+        # 一定放行 —— 只是类型上还看不出来。收窄到 harness 自己的字面量类型，而不是
+        # 退化成 Any：将来它真加宽了，这里会自己报警。
+        provider=cast(HarnessMediaProviderName, item.provider),
         api_key=api_key,
         base_url=item.base_url,
         image_model=item.image_model,
@@ -610,12 +618,16 @@ class MediaGenerationSettingsStore:
             MediaGenerationConfig,
             MediaProviderConfig,
         )
+        from octop_harness.config import (  # noqa: PLC0415
+            MediaProviderName as HarnessMediaProviderName,
+        )
 
         credentials = self._credentials()
         providers = [
             MediaProviderConfig(
                 id=item.id,
-                provider=item.provider,
+                # 同上：非内置供应商靠导入期注入 harness 白名单，这里只做类型收窄。
+                provider=cast(HarnessMediaProviderName, item.provider),
                 api_key=credentials[item.id],
                 base_url=item.base_url,
                 image_model=item.image_model,
