@@ -37,8 +37,5 @@
       "purpose": "any"
     }
   ],
-  "categories": [
-    "productivity",
-    "utilities"
-  ]
+  "categories": ["productivity", "utilities"]
 }

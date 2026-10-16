@@ -445,7 +445,7 @@ interface BatchResponse {
 }
 
 interface BatchTokenFormValues {
-image_quota?: number | null;
+  image_quota?: number | null;
   limit_token_quota?: boolean;
   token_quota?: number | null;
 }

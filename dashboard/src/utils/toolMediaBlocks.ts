@@ -100,9 +100,7 @@ export function stripPathWrappers(path: string): string {
   let out = path.trim();
   // Repeat: authors nest wrappers ("`'a.png'`").
   for (let i = 0; i < 3; i += 1) {
-    const next = out
-      .replace(/^[\s`'"<([{]+/, "")
-      .replace(/[\s`'"\])}>]+$/, "");
+    const next = out.replace(/^[\s`'"<([{]+/, "").replace(/[\s`'"\])}>]+$/, "");
     if (next === out) break;
     out = next;
   }

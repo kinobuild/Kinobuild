@@ -6560,7 +6560,6 @@
     "memory": {
       "title": "记忆",
       "subtitle": "查看并整理当前专家记下的记忆，也可处理待确认草稿"
-
     },
     "workspace": {
       "title": "工作区",
@@ -6601,7 +6600,6 @@
     "bridge": {
       "title": "云端协同",
       "subtitle": "连接另一台 KinoGuild，在本机浏览对端专家并跨实例对话"
-
     },
     "security": {
       "title": "安全防护",
@@ -6622,7 +6620,6 @@
     "desktop": {
       "title": "远程桌面",
       "subtitle": "查看并操控 KinoGuild 主机操作系统桌面，远程完成桌面操作"
-
     },
     "terminal": {
       "title": "终端 AI+",

@@ -281,7 +281,8 @@ export function MediaGenerationSettingsPanel() {
       // 而未注册的 Form.Item 不会出现在 validateFields() 的返回值里。直接
       // `values.video_model.trim()` 会抛 TypeError，被下面的 catch 吞掉，
       // 表现就是「点保存毫无反应」——连一句提示都没有。
-      const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+      const text = (value: unknown): string =>
+        typeof value === "string" ? value.trim() : "";
       return {
         ...editingProvider,
         ...values,

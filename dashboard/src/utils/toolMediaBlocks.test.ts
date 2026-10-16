@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { agentAttachmentAccessUrl, agentMediaPreviewUrl, canonicalizeMediaApiUrl, isHostAbsoluteMediaPath, needsAuthBlobFetch, parseStructuredToolOutput, parseToolExecutionFeedback, stripPathWrappers, toMediaPreviewSource, workspaceDownloadUrl } from "./toolMediaBlocks";
+import {
+  agentAttachmentAccessUrl,
+  agentMediaPreviewUrl,
+  canonicalizeMediaApiUrl,
+  isHostAbsoluteMediaPath,
+  needsAuthBlobFetch,
+  parseStructuredToolOutput,
+  parseToolExecutionFeedback,
+  stripPathWrappers,
+  toMediaPreviewSource,
+  workspaceDownloadUrl,
+} from "./toolMediaBlocks";
 
 describe("workspaceDownloadUrl", () => {
   it("keeps host-absolute paths as-is", () => {
@@ -220,6 +231,8 @@ describe("stripPathWrappers", () => {
 describe("toMediaPreviewSource strips wrappers end to end", () => {
   it("resolves a backtick-wrapped path to the same source as the bare one", () => {
     const bare = toMediaPreviewSource("inbound/a.png", { agentId: "AG1" });
-    expect(toMediaPreviewSource("`inbound/a.png`", { agentId: "AG1" })).toBe(bare);
+    expect(toMediaPreviewSource("`inbound/a.png`", { agentId: "AG1" })).toBe(
+      bare,
+    );
   });
 });
