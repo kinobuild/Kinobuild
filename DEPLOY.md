@@ -112,6 +112,43 @@ docker compose -f docker/docker-compose.yml build \
 
 Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile` 的 `uv sync` 步骤）。
 
+### 3.6 实际部署布局与构建耗时（2026-10-16 实测）
+
+**本服务器不是 git clone**，而是一份同步过去的源码副本 + 固定叠加的 override：
+
+```
+/opt/kinoguild/src/                      # 源码副本（不是 git 仓库）
+/opt/kinoguild/src/docker/.env                       # 服务器独有，不在 git 里
+/opt/kinoguild/src/docker/docker-compose.override.yml # 服务器独有，不在 git 里
+/opt/kinoguild/data/  →  容器 /data/.octop            # 全部状态，别动
+/opt/kinoguild/compose.sh                # 固定 -f docker-compose.yml -f …override.yml
+```
+
+同步用 `git archive HEAD | ssh … tar -x` 到 `src.new`，**先把 `.env` 和
+`docker-compose.override.yml` 拷回去**再换目录 —— 这两个文件不在 git 里，
+`rsync --delete` 会把它们删掉。构建走 `docker/docker_build.sh`（已含镜像参数），
+换镜像前先 `docker tag octop:latest octop:rollback-<短 id>` 留回滚锚点。
+
+**构建慢的地方是下载依赖，不是编译**（服务器只有 2 核，实测构建期间负载 0.02、
+没有 cc1/gcc 在跑，瓶颈全在网络）：
+
+- 同一时刻取同一个 wheel 对比：阿里云 654 KB/s、腾讯云 413 KB/s、PyPI 官方 47 KB/s。
+- 但**带宽随时段波动很大**：凌晨那次 `uv sync` 1.3 秒就开始下 `pydantic-core`，
+  整场构建 6 分钟；当晚 23:22 重跑同一阶段，`uv` 实测长时间只有 110–150 KB/s，
+  中途突然涨到 3 MB/s 又回落，55 分钟还没走完。
+- 所以：**动手前先花 20 秒测一次速**（从 `uv.lock` 里取一个 wheel 的真实地址，
+  分别对三个源 `curl -o /dev/null -w '%{speed_download}'`），别默认某个源快。
+- 判断有没有卡住看 `/proc/<uv pid>/io` 的 `write_bytes` 涨不涨，别看日志 ——
+  `uv sync` 只在**开始**下载某个包时打一行，长时间无输出是正常的。
+
+⚠️ **`docker/Dockerfile` 的 uv 缓存挂载没生效**（本次未改）：挂载点是
+`--mount=type=cache,target=/root/.cache/uv`，而镜像里 `HOME=/data`，
+uv 实际读写的是 `/data/.cache/uv` —— 于是每次构建都重新下载并解包全部依赖
+（锁文件 248 个包，约 500 MB）。要修就是把挂载点改成 `/data/.cache/uv`
+（或显式 `ENV UV_CACHE_DIR=/root/.cache/uv`）。这会让整个依赖层失效重来一次，
+**需要单独一次部署去验证**，不要和别的变化混在同一次上线里。
+
+
 ### 本地开发
 
 本机若配置了 `UV_DEFAULT_INDEX`，`uv run` 会按该源重新解析并**改写 `uv.lock`**，
