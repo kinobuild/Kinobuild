@@ -1,0 +1,83 @@
+{
+  "id": "short-drama-screenwriter",
+  "label": {
+    "zh": "短剧编剧专家",
+    "en": "Short Drama Screenwriter Expert"
+  },
+  "description": {
+    "zh": "专业短剧剧本创作：从选题策划、故事方案、角色设计，到 20-100 集分集目录、单集剧本、爽点钩子自检与导出，覆盖都市情感、霸总、甜宠、重生、悬疑等中文短剧全类型。",
+    "en": "Professional short-drama scriptwriting: topic selection, story treatment, character design, 20-100 episode outlines, single-episode scripts, hook/paywall self-checks and export — covering romance, CEO, sweet-pet, rebirth and suspense genres."
+  },
+  "welcome_message": {
+    "zh": "从选题到分集剧本的短剧创作全流程",
+    "en": "Full short-drama writing flow from topic to episode scripts"
+  },
+  "icon_name": "clapperboard",
+  "color": "#db2777",
+  "skillhub": {
+    "scene": "media"
+  },
+  "prompt_files": [
+    "SOUL.md"
+  ],
+  "quick_prompts": [
+    {
+      "title": { "zh": "选题与故事方案", "en": "Concept & treatment" },
+      "description": { "zh": "一句话概念、卖点、主线冲突", "en": "Logline, selling points, core conflict" },
+      "prompt": {
+        "zh": "我想写一部短剧，题材方向：（例如：都市甜宠/重生复仇/悬疑反转），目标受众和集数：（例如：女性向，60集）。请给出故事方案：一句话概念、核心卖点、世界观、主线冲突和人物弧光。",
+        "en": "I want to write a short drama. Genre: (e.g. urban romance / rebirth revenge / suspense twist), audience and episode count: (e.g. female-skewing, 60 episodes). Give me a story treatment: logline, selling points, world, main conflict, character arcs."
+      },
+      "color": "#e8f4ff",
+      "icon_name": "lightbulb"
+    },
+    {
+      "title": { "zh": "角色设计", "en": "Character design" },
+      "description": { "zh": "身份、动机、秘密与反差感", "en": "Identity, motive, secrets, contrast" },
+      "prompt": {
+        "zh": "基于以下故事背景，设计主要角色：身份、动机、秘密、人物关系网和反差萌点，并说明每个角色承担的爽点功能。（贴上你的故事方案或一句话背景）",
+        "en": "Based on this story background, design the main cast: identity, motives, secrets, relationship web and contrast points, noting which payoff each character delivers. (Paste your treatment or premise)"
+      },
+      "color": "#fef3c7",
+      "icon_name": "users"
+    },
+    {
+      "title": { "zh": "分集目录", "en": "Episode outline" },
+      "description": { "zh": "每集主事件+付费钩子", "en": "Per-episode events with paywall hooks" },
+      "prompt": {
+        "zh": "用以下方案生成分集目录（每集一句话主事件，标出关键反转和付费卡点）：（贴上故事方案与角色设定）",
+        "en": "Turn this treatment into an episode outline (one main event per episode, marking key reversals and paywall hooks): (paste treatment & characters)"
+      },
+      "color": "#dcfce7",
+      "icon_name": "list"
+    },
+    {
+      "title": { "zh": "单集剧本", "en": "Single episode script" },
+      "description": { "zh": "场景头+动作+对白+情绪提示", "en": "Sluglines, action, dialogue, beats" },
+      "prompt": {
+        "zh": "根据分集目录写第（N）集完整剧本：场景头、动作描写、对白、情绪提示，对白短狠准，结尾留钩子。写完后按抓人度、冲突密度、爽点频率自检一遍并修正。",
+        "en": "Write the full script for episode (N) from the outline: scene heads, action, dialogue, emotion cues — punchy lines, ending on a hook. Then self-check for opening grip, conflict density and payoff frequency, and fix issues."
+      },
+      "color": "#fff1f2",
+      "icon_name": "pen-line"
+    }
+  ],
+  "task_examples": {
+    "zh": [
+      "给我出 5 个「重生+豪门」题材的短剧概念，各配一句话卖点",
+      "这是我的故事方案，设计男女主和反派的角色卡，要求动机不脸谱化",
+      "把这份方案展开成 80 集分集目录，每 10 集一个大反转",
+      "写第 1 集剧本，前 3 秒必须有冲突或悬念，结尾卡付费点",
+      "这集剧本帮我自检：爽点密度够不够，钩子在哪，哪里注水了",
+      "把选定方案导出成可拍摄格式：分场剧本 + 角色小传 + 分集梗概三份文件"
+    ],
+    "en": [
+      "Pitch 5 'rebirth + wealthy family' drama concepts, each with a one-line hook",
+      "Design protagonist and antagonist character cards from my treatment — no cartoon villains",
+      "Expand this treatment into an 80-episode outline with a major reversal every 10 episodes",
+      "Write episode 1: conflict within the first 3 seconds, ending on a paywall cliffhanger",
+      "Self-check this script: payoff density, hook placement, where it drags",
+      "Export the chosen package as shootable files: scene script + character bios + episode synopsis"
+    ]
+  }
+}
