@@ -10,7 +10,7 @@
 | 分支 | `main` |
 | 本机路径 | `/Users/mima1234/Documents/deepseek-harness/default-workspace/Octop` |
 | 上游 | `TencentCloud/Octop`（MIT 许可，本项目为其 fork 并改名 KinoGuild） |
-| 版本 | `pyproject.toml` → `1.0.2b6` |
+| 版本 | `pyproject.toml` → `1.0.2b8` |
 | 语言栈 | Python 3.12+ / FastAPI / uvicorn；前端 React 18 + TS + Vite + AntD |
 | 数据库 | SQLite（WAL，默认）或 PostgreSQL，单进程 |
 
@@ -112,7 +112,7 @@ docker compose -f docker/docker-compose.yml build \
 
 Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile` 的 `uv sync` 步骤）。
 
-### 3.6 实际部署布局与构建耗时（2026-10-16 实测）
+### 3.6 实际部署布局与构建耗时（2026-10-16 ~ 10-17 实测）
 
 **本服务器不是 git clone**，而是一份同步过去的源码副本 + 固定叠加的 override：
 
@@ -140,6 +140,24 @@ Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile
   分别对三个源 `curl -o /dev/null -w '%{speed_download}'`），别默认某个源快。
 - 判断有没有卡住看 `/proc/<uv pid>/io` 的 `write_bytes` 涨不涨，别看日志 ——
   `uv sync` 只在**开始**下载某个包时打一行，长时间无输出是正常的。
+
+**第二个下载坑是 Playwright 的 Chromium，`Dockerfile` 已经留好开关。**
+`runtime 12/13` 那步从 `cdn.playwright.dev` 拉 177 MB Chrome，这个地址国内极慢
+（实测 84 KB/s ⇒ 约 30 分钟；进度条原地刷新，日志里只留一行 `0%`，看着像卡死）。
+`docker/docker_build.sh:47` 会把 `PLAYWRIGHT_DOWNLOAD_HOST` 转发成 build-arg，
+构建时一起设上（npmmirror 实测 1.6 MB/s ⇒ 2 分钟，目录结构完全对得上）：
+
+```bash
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ PIP_TRUSTED_HOST=mirrors.aliyun.com \
+NPM_REGISTRY=https://registry.npmmirror.com APT_MIRROR=mirrors.aliyun.com \
+PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright \
+bash docker/docker_build.sh octop:latest
+```
+
+⚠️ **别随手 `docker builder prune -f`**：它把这 177 MB 的下载缓存一起清掉，
+清完的第一次构建必然重演这次慢下载。实测对比：缓存命中时整场 5 分 1 秒，
+清掉后同一阶段跑了 25 分钟还没下完，换上上面的镜像源才回到 2 分钟。
+回收磁盘前先想清楚这一步值不值。
 
 ⚠️ **`docker/Dockerfile` 的 uv 缓存挂载没生效**（本次未改）：挂载点是
 `--mount=type=cache,target=/root/.cache/uv`，而镜像里 `HOME=/data`，
