@@ -188,6 +188,22 @@ network timeout (current value: 30s)`），而同一时刻单文件 curl 阿里�
 两次 `Downloading` 之间隔 3-5 分钟也算正常。**缓存修好之后失败的构建会保留已下载的
 部分**，重跑是从断点继续，不再是从零开始。
 
+**怎么确认缓存真的写进去了（`docker buildx du` 会骗人）**：它把 cache mount 记录报成
+`Size: 0B`，看着像没生效。决定性办法是拿同一路径的挂载做一次探针构建，直接 `du`：
+
+```bash
+mkdir -p /tmp/probe && cat > /tmp/probe/Dockerfile <<'EOF'
+FROM python:3.12-slim
+RUN --mount=type=cache,target=/root/.cache/uv du -sh /root/.cache/uv; \
+    find /root/.cache/uv -name "*pillow*" | head -2
+EOF
+cd /tmp/probe && docker build --progress=plain -f Dockerfile . 2>&1 | tail -6
+```
+
+2026-10-18 实测：构建被中途 `pkill` 之后探针仍读出 **897M**，且
+`/root/.cache/uv/wheels-v5/pypi/pillow` 在 —— 说明挂载生效、且缓存卷**跨构建存活**。
+所以慢窗口里可以放心停手，不必硬等到天亮。
+
 
 ### 本地开发
 
