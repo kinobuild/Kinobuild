@@ -482,3 +482,26 @@ def test_plugin_skill_sync_survives_corrupt_state_file(
     assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
         "demo-plugin": "1.0.0"
     }
+
+
+def test_channel_reload_preserves_class_until_source_changes(tmp_path: Path) -> None:
+    from octop_harness.plugins.context import PluginContext
+
+    if not hasattr(PluginContext, "channel"):
+        pytest.skip("released harness lacks channel registration; exercised with companion source")
+    config = tmp_path / "config.json"
+    config.write_text("{}")
+    directory = tmp_path / "plugins" / "test-channel"
+    directory.mkdir(parents=True)
+    (directory / "plugin.yaml").write_text(
+        "id: test-channel\nversion: 1\nkind: channel\nentry: main.py\n"
+    )
+    source = directory / "main.py"
+    source.write_text('class Channel: pass\ndef setup(ctx): ctx.channel("acme", Channel)\n')
+    manager = PluginManager(plugins_dir=directory.parent, config_path=config)
+    first = manager.load_installed(install_deps=False)[0].channels[0].channel_cls
+    second = manager.load_installed(install_deps=False)[0].channels[0].channel_cls
+    assert first is second
+    source.write_text(source.read_text() + "\n# updated implementation\n")
+    third = manager.load_installed(install_deps=False)[0].channels[0].channel_cls
+    assert third is not first

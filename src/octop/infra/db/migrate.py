@@ -1607,6 +1607,12 @@ def _ensure_skill_copy_policy_schema(db: DatabasePool) -> None:
     _ensure_column(db, "skill_packages", "copy_policy", "TEXT NOT NULL DEFAULT 'snapshot'")
 
 
+def _ensure_skill_package_download_schema(db: DatabasePool) -> None:
+    if not _table_exists(db, "skill_packages"):
+        return
+    _ensure_column(db, "skill_packages", "allow_download", "INTEGER NOT NULL DEFAULT 1")
+
+
 def _ensure_bridge_connections_schema(db: DatabasePool) -> None:
     """Fold notes + unique display_name + auto_reconnect into unreleased v19."""
     if not _table_exists(db, "bridge_connections"):
@@ -1787,6 +1793,8 @@ def _reconcile_pre_squash_schema_version(db: DatabasePool) -> None:
         _ensure_thread_conversation_mode_schema(db)
     if max_version >= 18:
         _ensure_user_role_schema(db)
+    if max_version >= 22:
+        _ensure_skill_package_download_schema(db)
     with db.connect() as conn:
         conn.execute("UPDATE _schema_version SET version = ?", (max_version,))
 
@@ -1951,6 +1959,15 @@ def _apply_sqlite_migration(db: DatabasePool, version: int, path: Path) -> None:
         # SQLite uses the idempotent helper so re-applying 021 over a current
         # physical schema (clamped-watermark repairs) cannot re-add columns.
         _ensure_invite_usage_schema(db)
+        with db.connect() as conn:
+            conn.execute("UPDATE _schema_version SET version = ?", (version,))
+        return
+    if version == 22:
+        # Upstream shipped this as 021; KinoGuild already owns 021
+        # (``021_invite_multi_use``, live in production since 1.0.2b8), so the
+        # pair was renumbered to 022 to keep ``_list_migrations`` from raising on
+        # a duplicate version. The helper is idempotent for the same reason.
+        _ensure_skill_package_download_schema(db)
         with db.connect() as conn:
             conn.execute("UPDATE _schema_version SET version = ?", (version,))
         return

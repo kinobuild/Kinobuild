@@ -1,0 +1,74 @@
+{
+  "id": "whitebox-director",
+  "label": {
+    "zh": "白模分镜导演专家",
+    "en": "Whitebox Blocking Director Expert"
+  },
+  "description": {
+    "zh": "用无头 Blender 把文字描述或实拍短片变成白模 blocking 动画：占位人偶、走位、过肩/推拉等镜头语言、剪辑节奏，直接产出可喂给视频生成模型的运镜参考。",
+    "en": "Turns text briefs or live-action shorts into whitebox blocking animations with headless Blender — capsule actors, staging, OTS/dolly camera language and cut rhythm, ready as motion references for video-generation models."
+  },
+  "welcome_message": {
+    "zh": "把描述或实拍短片变成带运镜的白模分镜动画",
+    "en": "Turn briefs or footage into camera-matched whitebox blocking"
+  },
+  "icon_name": "film",
+  "color": "#0ea5e9",
+  "prompt_files": [
+    "SOUL.md"
+  ],
+  "quick_prompts": [
+    {
+      "title": { "zh": "双人对话场景", "en": "Two-hander dialogue" },
+      "description": { "zh": "过肩正反打 + 走位的白模分镜", "en": "OTS coverage and staging blocking" },
+      "prompt": {
+        "zh": "帮我做一个 15 秒双人对话白模场景：（描述两个角色、关系、地点、氛围，例如：港式夜景街角，警察与卧底对峙，一方转身离开）。要求有过肩镜头和明确的镜头切换节奏。",
+        "en": "Make a 15s whitebox two-hander scene: (describe characters, relationship, location, mood). Include over-the-shoulder shots and clear cut rhythm."
+      },
+      "color": "#e8f4ff",
+      "icon_name": "users"
+    },
+    {
+      "title": { "zh": "实拍转白模", "en": "Footage to blocking" },
+      "description": { "zh": "拆片分析镜头语言并重建", "en": "Analyze a short and rebuild as blocking" },
+      "prompt": {
+        "zh": "这是我的一段实拍短片（附上文件路径）：请先拆镜头（边界、时长、每镜头的景别与运镜），再用白模逐镜头重建，保持原片的剪辑节奏和机位关系。",
+        "en": "Here is my live-action short (file path attached): first break it into shots (boundaries, durations, framing, camera moves), then rebuild it as whitebox blocking matching the original cut rhythm."
+      },
+      "color": "#dcfce7",
+      "icon_name": "clapperboard"
+    },
+    {
+      "title": { "zh": "产品转台", "en": "Product turntable" },
+      "description": { "zh": "几何体/产品白模环绕展示", "en": "Clay turntable showcase" },
+      "prompt": {
+        "zh": "用白模风格渲一段产品转台动画：（描述主体物件的几何构成、时长、分辨率），材质用浅灰黏土，镜头环绕缓推。",
+        "en": "Render a whitebox clay turntable animation of: (describe the object's geometry, duration, resolution), light-gray clay material, orbiting slow-push camera."
+      },
+      "color": "#fef3c7",
+      "icon_name": "box"
+    },
+    {
+      "title": { "zh": "运镜测试", "en": "Camera move test" },
+      "description": { "zh": "指定一个镜头语言单独出片", "en": "Isolate one camera move" },
+      "prompt": {
+        "zh": "只渲一个镜头给我看效果：（描述镜头，例如：低角度缓推穿过一组建筑体量，最后停在一个人偶背影上，8 秒，手持微抖）。",
+        "en": "Render just one shot: (describe the camera move, e.g. low-angle slow dolly through building masses ending on a figure's back, 8s, subtle handheld)."
+      },
+      "color": "#f1f5f9",
+      "icon_name": "video"
+    }
+  ],
+  "task_examples": {
+    "zh": [
+      "把 ~/Videos/short.mp4 拆镜头重建成 15 秒白模 blocking，保持原剪辑节奏",
+      "做一个雨夜天台双人对坐谈话的白模场景，含一个过肩一个反打",
+      "渲一段 8 秒产品转台：主体是立方体+圆柱组合，720p，缓推收尾"
+    ],
+    "en": [
+      "Rebuild ~/Videos/short.mp4 as a 15s whitebox blocking matching its cut rhythm",
+      "Block a rainy-night rooftop two-hander with one OTS and one reverse",
+      "Render an 8s product turntable: cube + cylinder subject, 720p, slow push-in ending"
+    ]
+  }
+}

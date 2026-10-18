@@ -148,6 +148,9 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
    同一文件还守**竞品痕迹**（`CLAUDE.md`、`${CLAUDE_PLUGIN_ROOT}`）：上游会把
    为 Claude 生态写的模板直接搬进来，这类内容会让模型在**用户的工作区**里创建
    竞品命名的文件，界面上用户看得见。
+   上游有时会用**测试**钉住品牌字样（b9 的 `test_business_operations_template.py`
+   就断言每个 `SKILL.md` 含「已为 Octop 改编」），于是和第 3 步对撞。改测试里的
+   **字样**、保留断言本身（署名意图仍然被守），不要反过来在交付文案里留上游品牌名。
 4. **核对锁文件**：`pytest tests/unit/test_lockfile_matches_pyproject.py`。
    上游抬高了 `pyproject.toml` 里 `octop-*` 的下限，而合并冲突很容易把
    `uv.lock` 解成我们的旧版；`docker/Dockerfile` 用 `uv sync --frozen`，
@@ -162,8 +165,18 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
    名单，**不要改那个专家自己的 `manifest.json`** —— 改了下次合并会被上游覆盖，
    卡片会悄悄重新上架。名单同时决定第 3 步竞品扫描的范围：被抑制的专家不对外
    提供，其文案因此不在检查之列。
+7. **核对迁移号**：迁移号是两个仓库各写各的，**撞号必炸而 git 不会报冲突**（文件名不
+   同）—— `_list_migrations` 见到重复号直接抛 `RuntimeError`
+   （`src/octop/infra/db/migrate.py:57`），服务启动即失败。本仓库的
+   `021_invite_multi_use` 已随 1.0.2b8 上到生产、库里水位就是 21，因此上游 b9 的
+   `021_skill_package_download` 改名为 `022_…`。要跟着一起改：两份 SQL 里的
+   `UPDATE _schema_version SET version = 22`、`migrate.py` 的 SQLite 分支与水位钳回阶梯
+   （`max_version >= 22`）、`tests/unit/db/*` 和 `tests/unit/backup/test_system_archive.py`
+   的版本断言。**不要反过来改我们的 021**：生产库已经应用过它，重跑
+   `ALTER TABLE … ADD COLUMN` 会报重复列。上线后核对
+   `select version from _schema_version` 应为 22、`skill_packages` 应多出 `allow_download`。
 
-第 2～4 步和第 6 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
+第 2～4 步、第 6 步和第 7 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
 必须把锁文件一起同步到服务器（见 `DEPLOY.md` 第 3.5 节）。
 
 **许可核对**：上游每次带进第三方技能，先看它目录里有没有 `LICENSE.txt`，再决定
