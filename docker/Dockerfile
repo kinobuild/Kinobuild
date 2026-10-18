@@ -106,6 +106,25 @@ WORKDIR /app
 
 # 先安装锁定依赖，仅改源码时可复用此层缓存
 COPY pyproject.toml uv.lock README.md LICENSE ./
+
+# Two build-time-only settings, placed here (right before the uv steps that need
+# them) so earlier layers keep their cache:
+#
+# UV_CACHE_DIR — this stage sets HOME=/data for the running container, so without
+# this uv reads/writes /data/.cache/uv while the --mount below is attached to
+# /root/.cache/uv and never gets used: every build re-downloaded the whole ~500 MB
+# dependency set, and the two `uv sync` steps each did it again. Pointing uv at the
+# mounted path makes the cache real — step 138 reuses step 109's downloads, and a
+# failed build keeps its partial progress for the next attempt.
+#
+# UV_HTTP_TIMEOUT — the default 30 s is not enough on a throttled link: an hour-long
+# `uv sync` died on `pillow` with "Failed to extract archive: … network timeout
+# (current value: 30s)" while a single-file curl to the same mirror reported 10 MB/s
+# (uv only holds ~2 paced connections). 300 s rides out the stall instead of failing
+# the whole layer.
+ENV UV_CACHE_DIR=/root/.cache/uv \
+    UV_HTTP_TIMEOUT=300
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ -n "$PIP_INDEX_URL" ]; then \
         export UV_INDEX_URL="$PIP_INDEX_URL"; \

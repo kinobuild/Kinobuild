@@ -129,6 +129,13 @@ Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile
 `rsync --delete` 会把它们删掉。构建走 `docker/docker_build.sh`（已含镜像参数），
 换镜像前先 `docker tag octop:latest octop:rollback-<短 id>` 留回滚锚点。
 
+⚠️ **`git archive` 的保护只在"没被跟踪"时才成立。** 实测踩过：合并上游时用
+`git add -A` 暂存冲突解决结果，把只应留在本机的 `whitebox-director`（需要 headless
+Blender + ffmpeg，服务器两样都没有）一起提交并推送了 —— 它因此上了货架，而用户一点
+就交付不出东西。所以：**暂存冲突一律按路径 `git add <file>`，不要用 `-A`**；本地专用
+目录另加进 `.git/info/exclude`（只影响本机，不进仓库）；换目录前的自检要确认新 `src`
+里没有本地专用专家目录，并核对 `library` 目录数符合预期。
+
 **构建慢的地方是下载依赖，不是编译**（服务器只有 2 核，实测构建期间负载 0.02、
 没有 cc1/gcc 在跑，瓶颈全在网络）：
 
@@ -140,6 +147,12 @@ Dockerfile 会把 `PIP_INDEX_URL` 转成 `UV_INDEX_URL`（见 `docker/Dockerfile
   分别对三个源 `curl -o /dev/null -w '%{speed_download}'`），别默认某个源快。
 - 判断有没有卡住看 `/proc/<uv pid>/io` 的 `write_bytes` 涨不涨，别看日志 ——
   `uv sync` 只在**开始**下载某个包时打一行，长时间无输出是正常的。
+- ⚠️ **但闸门只测单连接，它会骗人**（2026-10-18 实测）：19:53 测出 5.9 MB/s、
+  20:07 测出 10.9 MB/s，同一时刻 `uv` 的持续写盘只有 **118 → 224 KB/s**，网卡收包
+  58 KB/s，而 `uv` 只握着 2 条 TCP 连接、CPU 占用 0.3%（说明在等网络，不是编译慢）。
+  镜像源对少量连接逐连接限速时，就会出现「curl 飞快、uv 爬」。**决定要不要重来一律看
+  `write_bytes` 的持续速率**，用它估剩余时间（依赖全集约 500 MB ⇒ 200 KB/s ≈ 40 分钟）；
+  已经跑下去的进度在未完成层里，换源重启等于从零再下，所以慢也别随手杀。
 
 **第二个下载坑是 Playwright 的 Chromium，`Dockerfile` 已经留好开关。**
 `runtime 12/13` 那步从 `cdn.playwright.dev` 拉 177 MB Chrome，这个地址国内极慢
@@ -159,12 +172,21 @@ bash docker/docker_build.sh octop:latest
 清掉后同一阶段跑了 25 分钟还没下完，换上上面的镜像源才回到 2 分钟。
 回收磁盘前先想清楚这一步值不值。
 
-⚠️ **`docker/Dockerfile` 的 uv 缓存挂载没生效**（本次未改）：挂载点是
+⚠️ **`docker/Dockerfile` 的 uv 缓存挂载曾经不生效**（1.0.2b9 上线时修）：挂载点是
 `--mount=type=cache,target=/root/.cache/uv`，而镜像里 `HOME=/data`，
 uv 实际读写的是 `/data/.cache/uv` —— 于是每次构建都重新下载并解包全部依赖
-（锁文件 248 个包，约 500 MB）。要修就是把挂载点改成 `/data/.cache/uv`
-（或显式 `ENV UV_CACHE_DIR=/root/.cache/uv`）。这会让整个依赖层失效重来一次，
-**需要单独一次部署去验证**，不要和别的变化混在同一次上线里。
+（锁文件 248 个包，约 500 MB），而且第 6 步和第 8 步两次 `uv sync` **各下一遍**。
+修法是在两个 uv 步骤前加 `ENV UV_CACHE_DIR=/root/.cache/uv`（不动 `HOME`，
+避免影响运行时读 `/data` 下的配置）。它会让整个依赖层失效重来一次，所以正好借
+这次「上游新增 extras 已经必然重装依赖」的上线一起验证，不额外付代价。
+验证办法：第二次 `uv sync` 应该几十秒结束、不再刷 `Downloading`；
+`docker buildx du` 里那个 uv 缓存卷应当稳定占位而不是每次归零。
+
+同一次还加了 `ENV UV_HTTP_TIMEOUT=300`：默认 30 秒在这条线上撑不住 —— 实测
+`uv sync` 跑满一小时后死在 `pillow` 上（`Failed to extract archive …
+network timeout (current value: 30s)`），而同一时刻单文件 curl 阿里云有 10.9 MB/s。
+两次 `Downloading` 之间隔 3-5 分钟也算正常。**缓存修好之后失败的构建会保留已下载的
+部分**，重跑是从断点继续，不再是从零开始。
 
 
 ### 本地开发
