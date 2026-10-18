@@ -296,6 +296,23 @@ cloudflared tunnel --url http://127.0.0.1:8088
 - 数据目录：`${OCTOP_DATA}`
 - 首次密码（未显式设置时）：`${OCTOP_DATA}/credential.txt`
 
+## 10. 上线记录
+
+以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
+
+- **2026-10-19 05:04 · 1.0.2b9**（合并上游 b9，253 文件 +15364/−581）
+  运行代码 = `ba4232a7`，镜像 `95ee0a7af122` 2.86GB，**schema 21 → 22**（上游的
+  `021_skill_package_download` 与我们的 `021_invite_multi_use` 撞号，重命名为 022，
+  依据见 `NOTICE.md` 第 7 步），依赖升 harness 1.0.4 / gateway 1.0.3，
+  货架 24 → **25**（新增 `business-operations`）。
+  回滚锚点 `octop:rollback-13db9dee` = `134312b05de2`；迁移前备份
+  `backup/octop-pre-b9-20261018-1953.db.gz`。验收过项：`/api/health` ok、22 agents /
+  17 threads 与备份一致、0 错误行、Chromium 烤在镜像内可启动渲染、
+  `cv2/fastembed/rapidocr/onnxruntime/pymupdf` 全部可 import。
+  **耗时反常点值得记**：同一份源码，晚上 21:09–23:30 跑了 2h20m 没走完依赖（37 KB/s），
+  凌晨 05:00 起 **7 分钟**构建成功 —— 差别是 1485 KB/s 的窗口 + 修好的 uv 缓存卷复用
+  897MB。"慢窗口里停手不丢进度"现在是实测结论，不是推测。
+
 ---
 
 **交接联系人**：本项目开发方。部署中遇到问题请回传：`docker logs octop` 的报错段落 + 出问题的完整 URL。
