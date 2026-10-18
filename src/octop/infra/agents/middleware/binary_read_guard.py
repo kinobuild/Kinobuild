@@ -1,4 +1,10 @@
-"""Block ``read_file`` on binary inbound attachments (PDF, Office, …)."""
+"""Block ``read_file`` on binary inbound attachments (PDF, Office, …).
+
+Images are NOT blocked: the deepagents filesystem middleware returns them as
+multimodal content blocks and scrubs them per model profile (missing
+capability fields default to supported), so vision models can look at
+rendered frames and uploaded pictures directly.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +32,11 @@ _BLOCKED_EXTENSIONS = frozenset(
         ".pptx",
         ".zip",
         ".bin",
+    }
+)
+# Readable as multimodal image blocks by the deepagents filesystem middleware.
+_IMAGE_EXTENSIONS = frozenset(
+    {
         ".gif",
         ".webp",
         ".jpg",
@@ -88,7 +99,12 @@ def read_file_block_reason(path: str) -> str | None:
             f"read_file blocked for binary file `{path}`. "
             "Use execute_shell_command or the matching skill instead."
         )
-    if _is_inbound_attachment(path) and ext and ext not in _TEXT_EXTENSIONS:
+    if (
+        _is_inbound_attachment(path)
+        and ext
+        and ext not in _TEXT_EXTENSIONS
+        and ext not in _IMAGE_EXTENSIONS
+    ):
         return (
             f"read_file blocked for inbound attachment `{path}`. "
             "Use execute_shell_command or the matching skill instead."
