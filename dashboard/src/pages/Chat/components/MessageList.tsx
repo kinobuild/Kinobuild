@@ -166,6 +166,7 @@ function renderMessageGroup(
     if (msg.role === "assistant") {
       return (
         <div
+          key={msg.id}
           data-message-id={msg.id}
           data-role="assistant"
           ref={(el) => {
@@ -197,6 +198,7 @@ function renderMessageGroup(
     }
     return (
       <div
+        key={msg.id}
         data-message-id={msg.id}
         data-role={msg.role}
         ref={(el) => {
@@ -830,6 +832,22 @@ export default function MessageList(props: MessageListProps) {
     }
   }, []);
 
+  // Identity MUST be stable: virtuoso republishes props every render and
+  // re-runs its scroll effect whenever `scrollerRef` changes, so an inline
+  // arrow here detaches/reattaches the scroller on every commit — a
+  // self-sustaining re-render loop whose interleaved commits race
+  // virtuoso's DOM recycling (streaming-time insertBefore NotFoundError).
+  const bindVirtualScroller = useCallback((el: HTMLElement | Window | null) => {
+    const next = el instanceof HTMLElement ? el : null;
+    if (next === scrollerRef.current) {
+      return;
+    }
+    scrollerRef.current = next;
+    if (next) {
+      setScrollerMountKey((k) => k + 1);
+    }
+  }, []);
+
   if (loading && messages.length === 0) {
     return (
       <div className={styles.messageListLoading}>
@@ -875,13 +893,7 @@ export default function MessageList(props: MessageListProps) {
           atTopStateChange={handleAtTopStateChange}
           atTopThreshold={200}
           startReached={requestOlderMessages}
-          scrollerRef={(el) => {
-            const next = el instanceof HTMLElement ? el : null;
-            if (next !== scrollerRef.current) {
-              scrollerRef.current = next;
-              if (next) setScrollerMountKey((k) => k + 1);
-            }
-          }}
+          scrollerRef={bindVirtualScroller}
           components={virtuosoComponents}
           itemContent={(index, group) =>
             renderMessageGroup(group, index - firstItemIndex, groupContext)
