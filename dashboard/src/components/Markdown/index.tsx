@@ -44,9 +44,15 @@ function MermaidBlock({ code }: { code: string }) {
     const cleanup = () => {
       // mermaid.render() inserts elements into the DOM on failure;
       // aggressively remove any leftover nodes it may have created.
-      document.getElementById(id)?.remove();
-      document.getElementById("d" + id)?.remove();
-      // Mermaid v11 may create <style> or <svg> with the generated id
+      //
+      // Only nodes OUTSIDE our container may go: the rendered <svg> carries this
+      // very id (mermaid sets ``id`` on the svg), and once React commits it via
+      // dangerouslySetInnerHTML it lives inside containerRef. Removing it there
+      // deletes a React-managed node behind React's back, and the next commit —
+      // every streaming delta while ``code`` changes — dies with
+      // "insertBefore: the node before which the new node is to be inserted is
+      // not a child of this node". The temp render container has the same id but
+      // sits in <body>, so the guarded sweep below still removes it.
       document.querySelectorAll(`[id^="${id}"]`).forEach((el) => {
         if (!containerRef.current?.contains(el)) el.remove();
       });

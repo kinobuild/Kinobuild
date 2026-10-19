@@ -868,7 +868,22 @@ export default function MessageList(props: MessageListProps) {
   }
 
   return (
-    <div ref={wrapperRef} className={styles.messageListWrapper}>
+    <div
+      ref={wrapperRef}
+      className={
+        isStreaming
+          ? `${styles.messageListWrapper} notranslate`
+          : styles.messageListWrapper
+      }
+      // Browser translation extensions (Chrome translate, immersive translate…)
+      // rewrite text nodes into their own wrappers. While a reply is streaming
+      // React is still inserting nodes into that subtree, and a rewritten
+      // sibling makes React's insertion point vanish — the throw surfaces as
+      // "insertBefore … is not a child of this node". Opt out of translation
+      // only during streaming; once the turn settles the attribute is dropped so
+      // history stays translatable.
+      translate={isStreaming ? "no" : undefined}
+    >
       <TurnTimelineRail
         messages={messages}
         messageGroups={messageGroups}
