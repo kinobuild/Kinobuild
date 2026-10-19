@@ -313,6 +313,23 @@ cloudflared tunnel --url http://127.0.0.1:8088
   凌晨 05:00 起 **7 分钟**构建成功 —— 差别是 1485 KB/s 的窗口 + 修好的 uv 缓存卷复用
   897MB。"慢窗口里停手不丢进度"现在是实测结论，不是推测。
 
+- **2026-10-19 15:32 · 1.0.2**（上游正式版，8 个实质提交）
+  提交 `ec11d09b`，镜像 `99076b45c593` 2.86GB，**schema 仍 22**（上游这次没有新迁移，
+  我们的 022 继续独占），依赖未变（harness 1.0.4 / gateway 1.0.3），货架 25 不变。
+  回滚锚点 `octop:rollback-1.0.2b9` = `95ee0a7af122`；迁移前备份
+  `backup/octop-pre-1.0.2-20261019-1528.db.gz`（893420B）。
+  **本次唯一会写生产数据的是启动时的一次性授权**：`migrate.py` 的
+  `_grant_permission_keys_once` 给老账号补 `granted_nav_page_permissions` 和
+  `granted_personalization_tab_permissions`（后者把个性化页拆成 skills/subagents/
+  tools/agent_plugins/mbti/memory 六项）。上线后已核对两个 flag 都落到了 `settings` 表。
+  新功能：一次性定时任务（复用 `cron_jobs`，触发条件写成 `date:<墙钟>` 前缀，
+  未执行的一次会 `mark_missed` 置为 missed 并停用，**不需要新表**）、钉钉 CLI (dws)
+  连接器、`shell_output.py`（按宿主代码页解码 grep/shell 输出）。
+  风险点：`infra/bridge/manager.py` 601 行重写（修「团队成员流刷新即断」），
+  这属于运行时行为，单测覆盖不了，**上线后要做一次 IM 多成员 + 刷新实测**。
+  构建耗时 ~5 分钟：uv.lock 只改了版本号那几行，但 COPY 层失效仍会重跑 `uv sync`，
+  靠修好的缓存卷（897MB）16 秒装完 218 个包 —— 这就是上次修缓存挂载的长期收益。
+
 ---
 
 **交接联系人**：本项目开发方。部署中遇到问题请回传：`docker logs octop` 的报错段落 + 出问题的完整 URL。
