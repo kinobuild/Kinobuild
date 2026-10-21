@@ -295,6 +295,14 @@ cloudflared tunnel --url http://127.0.0.1:8088
 - 健康检查：`GET /api/health`
 - 数据目录：`${OCTOP_DATA}`
 - 首次密码（未显式设置时）：`${OCTOP_DATA}/credential.txt`
+- **对话时控制台报 `insertBefore … is not a child of this node`**：不是后端问题，
+  也不进 `docker logs`。这是浏览器翻译类扩展（Chrome 内置翻译、沉浸式翻译、划词翻译）
+  在流式输出期间把文字节点包进自己的标签，React 手里的兄弟参照因此失效。服务端无关，
+  用户侧表现是弹一条错误提示、聊天还能继续。已在代码里治理：
+  `MessageList.tsx` 在流式期间给消息区加 `translate="no"` + `notranslate`，
+  输出结束自动撤掉（历史消息仍可翻译）；`Markdown/index.tsx` 的 mermaid 清理也只删
+  自身容器外的残留节点，避免删掉 React 树里带同名 id 的 `<svg>`。
+  **别把这两个属性/注释当冗余删掉** —— 删了报错就会回来（2026-10-19 用户实测修好）。
 
 ## 10. 上线记录
 
