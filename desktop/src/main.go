@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -38,6 +39,9 @@ type App struct {
 	trayClickTimer *time.Timer
 	drops          dropServer
 	ownsListenPort bool
+
+	statusMu sync.Mutex
+	status   string
 }
 
 func (a *App) ServiceName() string { return "desktop" }
@@ -194,10 +198,35 @@ func jsonString(s string) string {
 }
 
 func (a *App) setStatus(msg string) {
+	a.statusMu.Lock()
+	a.status = msg
+	a.statusMu.Unlock()
+	appendDesktopLog(msg)
 	if a.app == nil {
 		return
 	}
 	a.app.Event.Emit("desktop:status", msg)
+}
+
+// GetStatus lets the shell resync after its WebView loads. boot() runs in
+// parallel with the page, so the first status events can fire before the page
+// subscribes — without this the loading screen would sit on "Starting…" forever.
+func (a *App) GetStatus() string {
+	a.statusMu.Lock()
+	defer a.statusMu.Unlock()
+	return a.status
+}
+
+// appendDesktopLog appends one line to ~/.octop/desktop.log so a stuck start can
+// be diagnosed from the terminal, not just from a screenshot.
+func appendDesktopLog(msg string) {
+	path := filepath.Join(octopHome(), "desktop.log")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	fmt.Fprintf(file, "%s %s\n", time.Now().Format(time.RFC3339), msg)
 }
 
 // boot decides which mode the shell starts in. KinoGuild ships as a thin
@@ -219,6 +248,9 @@ func (a *App) boot() {
 	}
 	if settings.ServerURL == "" {
 		a.setStatus(desktopText(locale, copyStatusNeedServer))
+		// The webview windows only exist once app.Run() is up; wait a beat so the
+		// onboarding window actually appears instead of being dropped.
+		time.Sleep(400 * time.Millisecond)
 		a.showSettingsWindow()
 		return
 	}
@@ -500,6 +532,11 @@ func main() {
 		settingsWin.Hide()
 	})
 	settingsWin.OnWindowEvent(events.Common.WindowLostFocus, func(_ *application.WindowEvent) {
+		// Keep the window on screen until a server address is saved: during
+		// first-run onboarding hiding it would leave the user with no way in.
+		if api.store.get().ServerURL == "" {
+			return
+		}
 		settingsWin.Hide()
 	})
 
