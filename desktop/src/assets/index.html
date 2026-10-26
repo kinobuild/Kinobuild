@@ -527,7 +527,7 @@
       <div class="loading-card">
         <img
           id="mascot"
-          src="/octop-mascot-peek.webp"
+          src="/kino-mark.png"
           alt="KinoGuild"
           draggable="false"
         />
@@ -746,25 +746,6 @@
         return Call.ByName("main.App." + name, ...args);
       }
 
-      const MASCOT_IMAGES = [
-        "/octop-mascot-peek.webp",
-        "/octop-mascot-type.webp",
-      ];
-      const mascotEl = document.getElementById("mascot");
-      let mascotSrc = MASCOT_IMAGES[0];
-      function pickMascot(current) {
-        let next = current;
-        while (next === current) {
-          next = MASCOT_IMAGES[Math.floor(Math.random() * MASCOT_IMAGES.length)];
-        }
-        return next;
-      }
-      mascotSrc = pickMascot(mascotSrc);
-      mascotEl.src = mascotSrc;
-      mascotEl.addEventListener("click", () => {
-        mascotSrc = pickMascot(mascotSrc);
-        mascotEl.src = mascotSrc;
-      });
 
       function current() {
         return {
