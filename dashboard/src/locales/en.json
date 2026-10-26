@@ -4127,7 +4127,8 @@
     "ssoUnbindSuccess": "Single sign-on unlinked",
     "ssoBindFailed": "Could not start account linking",
     "ssoUnbindFailed": "Could not unlink single sign-on",
-    "ssoPopupBlocked": "Allow pop-ups to continue with single sign-on."
+    "ssoPopupBlocked": "Allow pop-ups to continue with single sign-on.",
+    "downloadDesktop": "Download desktop app"
   },
   "user": {
     "title": "User Settings",
@@ -5640,6 +5641,7 @@
     "expertsRequired": "This page needs an expert"
   },
   "login": {
+    "downloadDesktop": "Download desktop app",
     "title": "Sign in",
     "subtitle": "An intelligent partner that understands you, helps you, and grows with you",
     "username": "Username or email",

@@ -455,6 +455,23 @@ export default function LoginPage() {
             ))}
           </>
         )}
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 13,
+            textAlign: "center",
+            color: "var(--fn-text-tertiary)",
+          }}
+        >
+          <a
+            href="/download"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "inherit" }}
+          >
+            {t("login.downloadDesktop", "下载桌面端")}
+          </a>
+        </div>
       </div>
     </div>
   );

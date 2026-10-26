@@ -4128,7 +4128,8 @@
     "ssoUnbindSuccess": "已解除单点登录",
     "ssoBindFailed": "无法开始绑定",
     "ssoUnbindFailed": "无法解除绑定",
-    "ssoPopupBlocked": "请允许弹出窗口以继续单点登录。"
+    "ssoPopupBlocked": "请允许弹出窗口以继续单点登录。",
+    "downloadDesktop": "下载桌面端"
   },
   "user": {
     "title": "用户设置",
@@ -5641,6 +5642,7 @@
     "expertsRequired": "此页需要专家"
   },
   "login": {
+    "downloadDesktop": "下载桌面端",
     "title": "登录",
     "subtitle": "懂你、帮你、陪你成长的智能伙伴",
     "username": "用户名或邮箱",

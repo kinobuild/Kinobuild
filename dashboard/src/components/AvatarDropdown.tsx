@@ -25,6 +25,7 @@ import {
   Lock,
   LockOpen,
   SlidersHorizontal,
+  Download,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -361,6 +362,18 @@ export default function AvatarDropdown({
           <span className={styles.menuHandle}>@{user.username}</span>
         )}
       </div>
+
+      <button
+        type="button"
+        className={styles.menuItem}
+        onClick={() => {
+          setMenuOpen(false);
+          window.open("/download", "_blank", "noopener,noreferrer");
+        }}
+      >
+        <Download size={16} strokeWidth={1.8} />
+        <span>{t("account.downloadDesktop")}</span>
+      </button>
 
       <Divider className={styles.menuDivider} />
 
