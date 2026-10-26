@@ -5,13 +5,13 @@
 version: "3"
 
 info:
-  companyName: "Octop"
-  productName: "Octop"
-  productIdentifier: "com.tencent.octop"
-  description: "Octop desktop shell"
-  copyright: "(c) 2026, Octop"
-  comments: "Wails v3 + green portable"
-  version: "0.9.26"
+  companyName: "KinoGuild"
+  productName: "KinoGuild"
+  productIdentifier: "com.kinoguild.desktop"
+  description: "KinoGuild desktop"
+  copyright: "(c) 2026, KinoGuild"
+  comments: "Wails v3 thin client (+ optional portable runtime)"
+  version: "1.0.2"
 
 dev_mode:
   root_path: .

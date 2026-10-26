@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -22,7 +23,20 @@ type Settings struct {
 	MinimizeToTray bool   `json:"minimizeToTray"`
 	PreventSleep   bool   `json:"preventSleep"`
 	Port           int    `json:"port,omitempty"`
+	// ServerURL is the KinoGuild server this client is attached to. When set the
+	// shell talks to that server instead of unpacking the bundled runtime, which
+	// is what a hosted deployment needs: the client keeps no user data locally.
+	ServerURL string `json:"serverUrl,omitempty"`
+	// Mode decides what the shell boots into: ``server`` (thin client, the
+	// KinoGuild default) or ``portable`` (upstream behaviour: unpack the bundled
+	// runtime and spawn it next to the app).
+	Mode string `json:"mode,omitempty"`
 }
+
+const (
+	modeServer   = "server"
+	modePortable = "portable"
+)
 
 func defaultSettings() Settings {
 	return Settings{
@@ -31,6 +45,7 @@ func defaultSettings() Settings {
 		MinimizeToTray: true,
 		PreventSleep:   false,
 		Port:           8088,
+		Mode:           modeServer,
 	}
 }
 
@@ -78,7 +93,18 @@ func loadSettings() Settings {
 	if s.Locale != LocaleZH {
 		s.Locale = LocaleEN
 	}
+	s.Mode = normalizeMode(s.Mode)
+	s.ServerURL = strings.TrimRight(strings.TrimSpace(s.ServerURL), "/")
 	return s
+}
+
+// normalizeMode keeps the stored mode to the two known values; a settings file
+// written by an older build has no mode and therefore means "server".
+func normalizeMode(value string) string {
+	if value == modePortable {
+		return modePortable
+	}
+	return modeServer
 }
 
 func (st *settingsStore) get() Settings {
@@ -93,6 +119,8 @@ func (st *settingsStore) save(next Settings) error {
 	if next.Port == 0 {
 		next.Port = 8088
 	}
+	next.Mode = normalizeMode(next.Mode)
+	next.ServerURL = strings.TrimRight(strings.TrimSpace(next.ServerURL), "/")
 	if err := os.MkdirAll(octopHome(), 0o755); err != nil {
 		return err
 	}

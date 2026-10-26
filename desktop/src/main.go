@@ -116,6 +116,42 @@ func (a *App) HideSettings() {
 	a.settingsWindow.Hide()
 }
 
+// ShowSettings opens the settings popover; first-run onboarding uses the same
+// window, so the user only ever learns one place to change the address.
+func (a *App) ShowSettings() {
+	a.showSettingsWindow()
+}
+
+func (a *App) showSettingsWindow() {
+	if a.settingsWindow == nil {
+		return
+	}
+	a.settingsWindow.Show()
+	a.settingsWindow.Focus()
+}
+
+// ConnectServer is bound to the settings UI: normalize and validate the typed
+// address, persist it, and switch the main window over. The returned version is
+// empty when the server is too old to report one.
+func (a *App) ConnectServer(address string) (string, error) {
+	base, err := normalizeServerURL(address)
+	if err != nil {
+		return "", err
+	}
+	version, err := checkServer(base, 30*time.Second)
+	if err != nil {
+		return "", err
+	}
+	next := a.store.get()
+	next.ServerURL = base
+	next.Mode = modeServer
+	if err := a.store.save(next); err != nil {
+		return "", err
+	}
+	a.showDashboard(base)
+	return version, nil
+}
+
 func (a *App) Quit() {
 	a.requestQuit()
 }
@@ -164,20 +200,59 @@ func (a *App) setStatus(msg string) {
 	a.app.Event.Emit("desktop:status", msg)
 }
 
+// boot decides which mode the shell starts in. KinoGuild ships as a thin
+// client (the server owns the data), so a configured address wins over the
+// bundled runtime; "portable" stays available for offline installs.
 func (a *App) boot() {
-	locale := LocaleEN
-	if a.store != nil {
-		locale = a.store.get().Locale
-	}
-	if url := os.Getenv("OCTOP_DESKTOP_URL"); url != "" {
-		a.setStatus(desktopText(locale, copyStatusConnecting))
-		if err := waitHealth(locale, url, 60*time.Second); err != nil {
-			a.setStatus(err.Error())
-			return
-		}
-		a.showDashboard(url)
+	settings := a.store.get()
+	locale := settings.Locale
+
+	// Explicit override: development, CI and support can point the shell at a
+	// server without touching the persisted settings.
+	if target := os.Getenv("OCTOP_DESKTOP_URL"); target != "" {
+		a.connectServer(locale, target)
 		return
 	}
+	if settings.Mode == modePortable {
+		a.bootPortable(locale)
+		return
+	}
+	if settings.ServerURL == "" {
+		a.setStatus(desktopText(locale, copyStatusNeedServer))
+		a.showSettingsWindow()
+		return
+	}
+	a.connectServer(locale, settings.ServerURL)
+}
+
+// connectServer validates the address and loads that server's dashboard. Every
+// failure re-opens the settings window: a status line alone leaves the user with
+// no way to fix the address.
+func (a *App) connectServer(locale Locale, raw string) {
+	base, err := normalizeServerURL(raw)
+	if err != nil {
+		a.setStatus(err.Error())
+		a.showSettingsWindow()
+		return
+	}
+	a.setStatus(desktopText(locale, copyStatusConnecting))
+	version, err := checkServer(base, 30*time.Second)
+	if err != nil {
+		a.setStatus(err.Error())
+		a.showSettingsWindow()
+		return
+	}
+	if version == "" {
+		a.setStatus(desktopText(locale, copyStatusConnectedUnknown, base))
+	} else {
+		a.setStatus(desktopText(locale, copyStatusConnected, base, version))
+	}
+	a.showDashboard(base)
+}
+
+// bootPortable is the upstream behaviour: unpack the bundled runtime and spawn
+// it beside the app. Only used when the user picks "portable" mode.
+func (a *App) bootPortable(locale Locale) {
 	a.setStatus(desktopText(locale, copyStatusCheckingRuntime))
 	if err := ensurePortable(locale, a.setStatus); err != nil {
 		a.setStatus(err.Error())
@@ -336,8 +411,8 @@ func main() {
 	}
 
 	app := application.New(application.Options{
-		Name:        "Octop",
-		Description: "Octop desktop",
+		Name:        "KinoGuild",
+		Description: "KinoGuild desktop",
 		Services: []application.Service{
 			application.NewService(api),
 		},
@@ -362,7 +437,7 @@ func main() {
 	})
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:                "Octop",
+		Title:                "KinoGuild",
 		Width:                1200,
 		Height:               800,
 		URL:                  "/",
@@ -386,7 +461,7 @@ func main() {
 	win.OnWindowEvent(events.Windows.WebViewNavigationCompleted, installDragOverlay)
 	win.OnWindowEvent(events.Linux.WindowLoadFinished, installDragOverlay)
 	settingsWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "Octop 设置",
+		Title:            "KinoGuild",
 		Width:            settingsWindowWidth,
 		Height:           settingsWindowOuterHeight(),
 		URL:              "/?settings=1",
@@ -430,7 +505,7 @@ func main() {
 
 	tray := app.SystemTray.New()
 	applyTrayIcon(tray)
-	tray.SetTooltip("Octop")
+	tray.SetTooltip("KinoGuild")
 	tray.AttachWindow(settingsWin).WindowOffset(6)
 	showSettings := func() { tray.ShowWindow() }
 	if trayLeftClickShowsSettings(runtime.GOOS) {

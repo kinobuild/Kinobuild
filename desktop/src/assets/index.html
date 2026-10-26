@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Octop</title>
+    <title>KinoGuild</title>
     <script>
       document.documentElement.dataset.chrome = /Mac|iPhone|iPad/.test(
         navigator.userAgent,
@@ -238,6 +238,46 @@
       select:focus {
         border-color: var(--brand);
         box-shadow: 0 0 0 3px rgba(232, 93, 117, 0.12);
+      }
+      input[type="url"] {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        outline: none;
+        width: 100%;
+      }
+      input[type="url"]:focus {
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgba(232, 93, 117, 0.12);
+      }
+      .row.server-row {
+        gap: 8px;
+      }
+      input[type="url"] {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        outline: none;
+        width: 100%;
+      }
+      input[type="url"]:focus {
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgba(232, 93, 117, 0.12);
+      }
+      .row.server-row {
+        gap: 8px;
+      }
+      .row.server-row select,
+      .row.server-row .primary {
+        flex-shrink: 0;
       }
       .switch {
         position: relative;
@@ -488,10 +528,10 @@
         <img
           id="mascot"
           src="/octop-mascot-peek.webp"
-          alt="Octop"
+          alt="KinoGuild"
           draggable="false"
         />
-        <p class="loading-brand" id="loading-brand">Octop</p>
+        <p class="loading-brand" id="loading-brand">KinoGuild</p>
         <p class="loading-hint" id="loading-hint">
           正在检查运行环境，可能需要几分钟。
         </p>
@@ -506,8 +546,29 @@
 
     <div id="settings-panel" class="hidden">
       <div class="wrap">
-        <h1 id="title">Octop 设置</h1>
+        <h1 id="title">KinoGuild 设置</h1>
         <p class="subtitle" id="subtitle">桌面端偏好</p>
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="label" id="l-server">服务器地址</div>
+              <small id="h-server"
+                >填写 KinoGuild 服务器地址，例如 https://kino.example.com</small
+              >
+            </div>
+          </div>
+          <div class="row server-row">
+            <input
+              id="server-url"
+              type="url"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="https://"
+            />
+            <button class="primary" id="server-connect" type="button">连接</button>
+          </div>
+          <p class="status hidden" id="server-status"></p>
+        </div>
         <div class="card">
           <div class="row">
             <div>
@@ -555,7 +616,7 @@
           </div>
         </div>
         <div class="actions">
-          <button class="primary" id="show-main">显示 Octop</button>
+          <button class="primary" id="show-main">显示 KinoGuild</button>
           <button class="ghost" id="quit">退出</button>
         </div>
         <p class="status hidden" id="settings-status"></p>
@@ -568,7 +629,7 @@
         zh: {
           statusWait: "正在启动，请稍候…",
           loadingHint: "正在检查运行环境，可能需要几分钟。",
-          title: "Octop 设置",
+          title: "KinoGuild 设置",
           subtitle: "桌面端偏好",
           lang: "语言",
           langH: "选择偏好语言 / Choose your preferred language",
@@ -578,7 +639,13 @@
           trayH: "点击最小化时隐藏窗口并保留在系统托盘",
           sleep: "防止系统休眠",
           sleepH: "应用运行期间阻止系统自动休眠",
-          showMain: "显示 Octop",
+          serverLabel: "服务器地址",
+          serverHint: "填写 KinoGuild 服务器地址，例如 https://kino.example.com",
+          serverConnect: "连接",
+          serverConnecting: "正在连接…",
+          serverOK: "已连接（服务器版本 %s）",
+          serverOKNoVersion: "已连接（服务器未报告版本）",
+          showMain: "显示 KinoGuild",
           quit: "退出",
           winGroup: "窗口控制",
           winMin: "最小化",
@@ -588,17 +655,23 @@
         en: {
           statusWait: "Starting, please wait…",
           loadingHint: "Checking the runtime. This may take a few minutes.",
-          title: "Octop Settings",
+          title: "KinoGuild Settings",
           subtitle: "Desktop preferences",
           lang: "Language",
           langH: "Choose your preferred language",
           auto: "Launch at login",
           autoH: "Start automatically after you sign in",
           tray: "Minimize to tray",
-          trayH: "Hide the window on minimize and keep Octop in the tray",
+          trayH: "Hide the window on minimize and keep KinoGuild in the tray",
           sleep: "Prevent system sleep",
-          sleepH: "Keeps the system awake while Octop is running",
-          showMain: "Show Octop",
+          sleepH: "Keeps the system awake while KinoGuild is running",
+          serverLabel: "Server address",
+          serverHint: "Address of your KinoGuild server, e.g. https://kino.example.com",
+          serverConnect: "Connect",
+          serverConnecting: "Connecting…",
+          serverOK: "Connected (server %s)",
+          serverOKNoVersion: "Connected (server did not report a version)",
+          showMain: "Show KinoGuild",
           quit: "Quit",
           winGroup: "Window controls",
           winMin: "Minimize",
@@ -632,6 +705,9 @@
         document.getElementById("h-tray").textContent = t.trayH;
         document.getElementById("l-sleep").textContent = t.sleep;
         document.getElementById("h-sleep").textContent = t.sleepH;
+        document.getElementById("l-server").textContent = t.serverLabel;
+        document.getElementById("h-server").textContent = t.serverHint;
+        document.getElementById("server-connect").textContent = t.serverConnect;
         document.getElementById("show-main").textContent = t.showMain;
         document.getElementById("quit").textContent = t.quit;
         document.getElementById("loading-hint").textContent = t.loadingHint;
@@ -742,6 +818,27 @@
         for (const id of ["locale", "autostart", "tray", "sleep"]) {
           document.getElementById(id).addEventListener("change", persist);
         }
+        document.getElementById("server-url").value = s.serverUrl || "";
+        document
+          .getElementById("server-connect")
+          .addEventListener("click", async () => {
+            const t = copy[document.getElementById("locale").value] || copy.en;
+            const status = document.getElementById("server-status");
+            status.classList.remove("hidden");
+            status.textContent = t.serverConnecting;
+            try {
+              const version = await call(
+                "ConnectServer",
+                document.getElementById("server-url").value,
+              );
+              status.textContent = version
+                ? t.serverOK.replace("%s", version)
+                : t.serverOKNoVersion;
+              call("ShowMain");
+            } catch (error) {
+              status.textContent = String(error);
+            }
+          });
         document
           .getElementById("show-main")
           .addEventListener("click", () => call("ShowMain"));

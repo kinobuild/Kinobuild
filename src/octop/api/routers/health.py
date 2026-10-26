@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -9,6 +11,18 @@ from fastapi import APIRouter, Depends
 from octop.api.deps import get_server
 
 router = APIRouter()
+
+
+def _app_version() -> str:
+    """Installed package version, or ``""`` when running from an uninstalled tree.
+
+    The desktop client reads this to refuse a server that is older than the APIs
+    it needs, instead of failing later with scattered 404s.
+    """
+    try:
+        return _package_version("octop")
+    except PackageNotFoundError:
+        return ""
 
 
 @router.get("", summary="Health check")
@@ -25,4 +39,5 @@ async def health(server: Any = Depends(get_server)) -> dict[str, Any]:
         "db": bound,
         "users_loaded": users,
         "agents_running": agents,
+        "version": _app_version(),
     }
