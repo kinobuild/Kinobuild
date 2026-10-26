@@ -90,6 +90,7 @@ func (a *App) SaveSettings(next Settings) (Settings, error) {
 	if err != nil {
 		return cur, err
 	}
+	next = mergeUnedited(cur, next)
 	autostart, err := a.setAutostart(next.Autostart)
 	if err != nil {
 		return cur, err
@@ -107,6 +108,15 @@ func (a *App) SaveSettings(next Settings) (Settings, error) {
 	saved := a.store.get()
 	a.applyDashboardPrefs(saved)
 	return saved, nil
+}
+
+// mergeUnedited keeps the fields the settings page does not render. The page
+// posts only its four controls, so a naive save would drop the server address
+// and push the shell back to onboarding on the next launch.
+func mergeUnedited(cur, next Settings) Settings {
+	next.ServerURL = cur.ServerURL
+	next.Mode = cur.Mode
+	return next
 }
 
 func (a *App) ShowMain() {
@@ -138,19 +148,30 @@ func (a *App) showSettingsWindow() {
 // address, persist it, and switch the main window over. The returned version is
 // empty when the server is too old to report one.
 func (a *App) ConnectServer(address string) (string, error) {
+	locale := a.store.get().Locale
 	base, err := normalizeServerURL(address)
 	if err != nil {
+		appendDesktopLog("connect rejected: " + err.Error())
 		return "", err
 	}
+	a.setStatus(desktopText(locale, copyStatusConnecting))
 	version, err := checkServer(base, 30*time.Second)
 	if err != nil {
+		appendDesktopLog("connect failed for " + base + ": " + err.Error())
+		a.setStatus(err.Error())
 		return "", err
 	}
 	next := a.store.get()
 	next.ServerURL = base
 	next.Mode = modeServer
 	if err := a.store.save(next); err != nil {
+		appendDesktopLog("connect: save settings failed: " + err.Error())
 		return "", err
+	}
+	if version == "" {
+		a.setStatus(desktopText(locale, copyStatusConnectedUnknown, base))
+	} else {
+		a.setStatus(desktopText(locale, copyStatusConnected, base, version))
 	}
 	a.showDashboard(base)
 	return version, nil
@@ -247,11 +268,10 @@ func (a *App) boot() {
 		return
 	}
 	if settings.ServerURL == "" {
+		// The main window renders the address form inline when no server is
+		// configured (see assets/index.html), so onboarding needs no popover —
+		// two windows at once only confuse first-run users.
 		a.setStatus(desktopText(locale, copyStatusNeedServer))
-		// The webview windows only exist once app.Run() is up; wait a beat so the
-		// onboarding window actually appears instead of being dropped.
-		time.Sleep(400 * time.Millisecond)
-		a.showSettingsWindow()
 		return
 	}
 	a.connectServer(locale, settings.ServerURL)

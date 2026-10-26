@@ -820,19 +820,24 @@
         (copy[locale] || copy.en).statusWait;
       applyCopy(locale);
 
-      if (settingsMode) {
+      // First run has no server yet: render the address form inline in the main
+      // window. The tray popover is easy to miss, and without an address the
+      // main window has nothing to load.
+      function showSettingsPanel() {
         document.getElementById("loading-panel").classList.add("hidden");
         document.getElementById("settings-panel").classList.remove("hidden");
         document.getElementById("locale").value = locale;
         document.getElementById("autostart").checked = !!s.autostart;
         document.getElementById("tray").checked = s.minimizeToTray !== false;
         document.getElementById("sleep").checked = !!s.preventSleep;
-
         for (const id of ["locale", "autostart", "tray", "sleep"]) {
           document.getElementById(id).addEventListener("change", persist);
         }
         document.getElementById("server-url").value = s.serverUrl || "";
-        if (!s.serverUrl) document.getElementById("server-url").focus();
+        if (!s.serverUrl) {
+          document.getElementById("server-url").focus();
+          document.getElementById("show-main").classList.add("hidden");
+        }
         document
           .getElementById("server-connect")
           .addEventListener("click", async () => {
@@ -859,6 +864,10 @@
         document
           .getElementById("quit")
           .addEventListener("click", () => call("Quit"));
+      }
+
+      if (settingsMode || !s.serverUrl) {
+        showSettingsPanel();
       }
 
       Events.On("desktop:status", (ev) => {
