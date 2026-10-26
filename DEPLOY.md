@@ -350,6 +350,19 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
   凌晨 05:00 起 **7 分钟**构建成功 —— 差别是 1485 KB/s 的窗口 + 修好的 uv 缓存卷复用
   897MB。"慢窗口里停手不丢进度"现在是实测结论，不是推测。
 
+- **2026-10-26 17:45 · 桌面端下载入口 + health 版本字段**（仍是 1.0.2，无迁移）
+  提交 `c987eab7`，镜像 `95004f6f902c`，回滚锚点 `octop:rollback-pre-download`
+  （= 上一版 `99076b45c593`）。schema 仍 22。
+  - `/api/health` 增加 `version`：桌面端握手依据（低于 minServerVersion 直接拒绝）。
+    上线后桌面端日志确认「已连接 …（服务器版本 1.0.2）」。
+  - 登录页底部 + 用户菜单加「下载桌面端」，指向 `/download`（静态托管，见 §8.5）。
+  - `desktop/` 薄客户端代码入库（Wails v3，THIN 打包，见 §8.5）。
+  **这次构建耗时反常（约 30 分钟）的根因**：Dockerfile 里 apt 装中文字体（60MB）与
+  playwright Chromium（177MB）都排在 `COPY src/` **之后** —— 只改前端一行也会重下这
+  240MB。待优化：把这两层挪到 COPY src/ 之前（只依赖 pyproject/uv.lock），并给
+  Chromium 加 `--mount=type=cache,target=/root/.cache/ms-playwright`；改完代码级部署
+  应回到 2~3 分钟。优化要单独一次上线（会触发全量构建，挑网速好的时段）。
+
 - **2026-10-19 15:32 · 1.0.2**（上游正式版，8 个实质提交）
   提交 `ec11d09b`，镜像 `99076b45c593` 2.86GB，**schema 仍 22**（上游这次没有新迁移，
   我们的 022 继续独占），依赖未变（harness 1.0.4 / gateway 1.0.3），货架 25 不变。
