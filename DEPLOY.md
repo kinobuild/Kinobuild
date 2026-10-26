@@ -289,6 +289,35 @@ cloudflared tunnel --url http://127.0.0.1:8088
 - [ ] `管理 → 用户 → 邀请` 生成的链接里是**对外域名**，不是 `127.0.0.1`
 - [ ] 手机 4G 网络下打开该邀请链接，能正常注册
 
+## 8.5 桌面端下载（内测）
+
+安装包和下载页是**服务器上的静态文件**：既不在仓库里，也不进容器镜像。
+
+| 路径 | 内容 |
+|---|---|
+| `/opt/kinoguild/downloads/index.html` | 下载页（含安装步骤、SHA-256） |
+| `/opt/kinoguild/downloads/files/*.dmg` | 安装包（arm64 = Apple 芯片，amd64 = Intel） |
+| `https://kinoguild.xingtudesign.com/download` | 对外地址 |
+
+nginx（`/etc/nginx/conf.d/kinoguild.conf` 的 443 段）里加了两个 location：
+`location = /download` 指向页面、`location /downloads/` 指向文件目录；
+改完必须 `nginx -t && systemctl reload nginx`（配置文件在服务器上，不在仓库里）。
+
+**发新版**：
+
+```bash
+cd desktop/src
+wails3 task darwin:package THIN=true VERSION=<ver> ARCH=arm64   # 再打一次 ARCH=amd64
+scp bin/KinoGuild-desktop-darwin-arm64-<ver>.dmg kinotv:/opt/kinoguild/downloads/files/KinoGuild-<ver>-arm64.dmg
+scp bin/KinoGuild-desktop-darwin-amd64-<ver>.dmg kinotv:/opt/kinoguild/downloads/files/KinoGuild-<ver>-amd64.dmg
+# 同步更新下载页上的版本号、体积、SHA-256
+curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg   # 期望 200
+```
+
+**当前是内测版**：ad-hoc 签名、未公证 → 用户下载后必须「右键 → 打开」才能启动，
+下载页已写明这一点。**对外公开发布前必须做 Developer ID 签名 + 公证**，
+否则 Gatekeeper 会拦（见 §10 上线记录里的桌面端条目）。
+
 ## 9. 排障入口
 
 - 应用日志：`docker logs -f octop`
