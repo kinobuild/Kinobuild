@@ -136,6 +136,26 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PATH="/app/.venv/bin:$PATH" \
     PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
+# --- 重资产层：中文字体 + Playwright Chromium -------------------------------
+# 这两样加起来约 240 MB，而且只依赖 venv 和 apt，**不依赖源码**。把它们放在
+# COPY src/ 之前，改一行代码就不会触发重下 —— 之前它们排在最后，导致晚高峰一次
+# 前端改动要重下 60MB 字体 + 177MB 浏览器，把 3 分钟的部署拖成 30 分钟。
+# ms-playwright 用 cache mount 挂住，依赖变动时也不用重新下载浏览器。
+# build-essential 在这里就清掉（而不是留到最后）：playwright --with-deps 装的系统
+# 库必须排在 purge 之后，否则会被 --auto-remove 顺手删掉。
+# ARG 放在本层正前方：它若声明在更早的位置，换镜像源会连带使依赖层失效。
+ARG PLAYWRIGHT_DOWNLOAD_HOST=
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/root/.cache/ms-playwright \
+    apt-get update \
+    && apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && apt-get purge -y --auto-remove build-essential \
+    && if [ -n "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_DOWNLOAD_HOST"; fi \
+    && playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY src/ ./src/
 COPY --from=frontend-builder /build/src/octop/dashboard/ ./src/octop/dashboard/
 
@@ -143,17 +163,8 @@ COPY .env.example ./
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Declared right before the step that uses it: an ARG declared earlier in the
-# stage would invalidate every later layer's cache (a full re-download of the
-# Python dependency set) whenever the mirror changes.
-ARG PLAYWRIGHT_DOWNLOAD_HOST=
-
-# Playwright Chromium + its system libraries are baked in here, not fetched at
-# runtime. The in-app installer writes them into the container's writable layer,
-# so any ``docker compose up -d`` recreate silently wipes them and every account
-# (admin included) then fails with "chrome: error while loading shared
-# libraries". ``--with-deps`` pulls the apt runtime libs (libnss3, libgbm, ...)
-# alongside the browser under PLAYWRIGHT_BROWSERS_PATH.
+# 只装项目本体：依赖层、字体、浏览器都已在前面的层里，这里仅剩「把 octop 装进
+# venv + 导入自检」，因此只改 src/ 时代价很小。
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ -n "$PIP_INDEX_URL" ]; then \
         export UV_INDEX_URL="$PIP_INDEX_URL"; \
@@ -162,11 +173,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     && uv sync --frozen --no-dev \
         --extra browser --extra local-embedding --extra knowledge-ocr \
     && .venv/bin/python -c "import cv2, fastembed, huggingface_hub, rapidocr, onnxruntime, pymupdf" \
-    && apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk \
-    && apt-get purge -y --auto-remove build-essential \
-    && if [ -n "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_DOWNLOAD_HOST"; fi \
-    && playwright install --with-deps chromium \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
+    && rm -rf /tmp/*
 
 RUN mkdir -p /data/.octop
 
