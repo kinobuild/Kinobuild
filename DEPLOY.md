@@ -369,6 +369,24 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
      只带附加文件 → 返回 404（`SkillPackageError` 被映射成 NOT_FOUND，看不出真实原因）。
    - 技能的 `frontmatter.name` 要与上传的 `name`（slug）一致，否则面板显示怪名字。
 
+3. **做成全局技能包**（推荐给团队自助）：`/api/skill-packages`（注意是连字符，不是
+   `/api/skills/packages`，后者会 405）：
+
+   ```bash
+   POST   /api/skill-packages                    {"name","description","icon_name"}
+   PATCH  /api/skill-packages/{id}               {"copy_policy":"lock","allow_download":false}
+   POST   /api/skill-packages/{id}/skills        {"name","content"} 或 {"name","files":[…含 SKILL.md]}
+   PUT    /api/agents/{agent_id}/skill-packages  {"package_ids":["<id>"]}   # 挂载（不复制文件）
+   DELETE /api/skill-packages/{id}                # 下架
+   ```
+
+   - **挂载（PUT agents/…/skill-packages）** 是团队自助的正确方式：技能以 `kind=package`
+     出现、不落文件副本，包内容更新后所有挂载的 agent 自动生效；卸载即恢复。
+   - `copy_policy`：`snapshot`（默认，普通拷贝）/ `lock`（拷贝时给 SKILL.md 打来源标记，
+     第三方内容建议用它）/ `deny`（禁止拷进 agent）。
+   - `allow_download=false` 表示不提供包导出（第三方授权不明的内容应关掉）。
+   - 实测：挂到干净 agent → 技能数 +5 且 `kind=package`；卸载后回到原样。
+
 3. **想让新 agent 自带**：把技能放进 `src/octop/infra/agents/experts/library/<expert>/skills/<slug>/`，
    重建镜像后**新建**的 agent 会带（已有 agent 不会，需按上面 API 单独装）。
    第三方技能内容涉及授权，不要直接 vendor 进仓库 —— 放进仓库的应是自研技能。
