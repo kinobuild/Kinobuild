@@ -341,6 +341,38 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 下载页已写明这一点。**对外公开发布前必须做 Developer ID 签名 + 公证**，
 否则 Gatekeeper 会拦（见 §10 上线记录里的桌面端条目）。
 
+## 8.6 给 agent 装第三方技能（外部技能市场）
+
+我们内置的市场是 `api.skillhub.cn`；第三方市场（例如千问 `qianwenai.com`）的技能**不能**
+走 `POST /api/agents/{id}/skills/import`（会报 `SKILL_IMPORT_UNSUPPORTED_URL`）。可行的两条路：
+
+1. **官方 CLI 拉包**（在开发机，不进服务器）：
+   ```bash
+   npm install --prefix /tmp/qwcli @qianwenai/qianwen-cli@latest
+   /tmp/qwcli/node_modules/.bin/qianwen skills install @bailian/<slug> --dir /tmp/qwskills --format json
+   ```
+   产物在 `/tmp/qwskills/<slug>/`（SKILL.md + 可选 references/、scripts/）。
+
+2. **用我们的 API 推进去**（唯一能进 agent 工作区的路）：
+
+   ```bash
+   POST /api/agents/<agent_id>/skills
+   {"name": "<slug>", "content": "<SKILL.md 全文>"}                 # 单文件技能
+   {"name": "<slug>", "files": [{"path": "SKILL.md", "content_base64": "…"},
+                                {"path": "references/x.md", "content_base64": "…"}]}  # 多文件技能
+   PUT  /api/agents/<agent_id>/skills/<slug>   {"content": "…"}       # 更新
+   DELETE /api/agents/<agent_id>/skills/<slug>                        # 卸载
+   ```
+
+   两个坑（都实测过）：
+   - **`files` 一旦提供，`SKILL.md` 必须自己放进 `files` 里**，该分支不会用 `content` 兜底；
+     只带附加文件 → 返回 404（`SkillPackageError` 被映射成 NOT_FOUND，看不出真实原因）。
+   - 技能的 `frontmatter.name` 要与上传的 `name`（slug）一致，否则面板显示怪名字。
+
+3. **想让新 agent 自带**：把技能放进 `src/octop/infra/agents/experts/library/<expert>/skills/<slug>/`，
+   重建镜像后**新建**的 agent 会带（已有 agent 不会，需按上面 API 单独装）。
+   第三方技能内容涉及授权，不要直接 vendor 进仓库 —— 放进仓库的应是自研技能。
+
 ## 9. 排障入口
 
 - 应用日志：`docker logs -f octop`
