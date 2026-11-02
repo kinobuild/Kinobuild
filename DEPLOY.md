@@ -172,6 +172,29 @@ bash docker/docker_build.sh octop:latest
 清掉后同一阶段跑了 25 分钟还没下完，换上上面的镜像源才回到 2 分钟。
 回收磁盘前先想清楚这一步值不值。
 
+### 构建层序（2026-11-02 优化，实测有效）
+
+字体（60MB）与 Playwright Chromium（177MB）原本排在 `COPY src/` **之后**，于是只改
+一行代码也要重下 240MB —— 晚高峰实测把部署拖成 30 分钟。现在这两样挪到了
+`COPY src/` **之前**（只依赖 venv 与 apt），最后那个 RUN 只做「装项目本体 + 导入
+自检」。实测：
+
+| 场景 | 耗时 |
+|---|---|
+| 只改源码（本次改动后的实测） | **23 秒** |
+| 依赖/字体/浏览器层需要重建时 | 251 秒 |
+
+两条踩过的坑，别再踩：
+- **不要**给 `/root/.cache/ms-playwright` 加 cache mount：cache mount 不进镜像，
+  浏览器留在缓存里、镜像目录是空的，playwright 启动会直接报找不到浏览器。第一版
+  我就这么写了，构建"成功"但镜像里 0 个浏览器，靠"启动 chromium"自检才发现。
+- `build-essential` 的 `purge --auto-remove` 必须排在 `playwright install --with-deps`
+  **之前**，否则会把刚装上的系统库当孤儿删掉。
+
+自检三件套（换镜像后必跑）：
+`ls /root/.cache/ms-playwright`（应有 3 个目录）、`fc-list | grep -ci "noto sans cjk"`
+（应为 10）、`.venv/bin/python` 起 chromium 渲染一次。
+
 ⚠️ **`docker/Dockerfile` 的 uv 缓存挂载曾经不生效**（1.0.2b9 上线时修）：挂载点是
 `--mount=type=cache,target=/root/.cache/uv`，而镜像里 `HOME=/data`，
 uv 实际读写的是 `/data/.cache/uv` —— 于是每次构建都重新下载并解包全部依赖
