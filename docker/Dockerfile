@@ -140,7 +140,9 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # 这两样加起来约 240 MB，而且只依赖 venv 和 apt，**不依赖源码**。把它们放在
 # COPY src/ 之前，改一行代码就不会触发重下 —— 之前它们排在最后，导致晚高峰一次
 # 前端改动要重下 60MB 字体 + 177MB 浏览器，把 3 分钟的部署拖成 30 分钟。
-# ms-playwright 用 cache mount 挂住，依赖变动时也不用重新下载浏览器。
+# 注意：**不要**给 /root/.cache/ms-playwright 加 cache mount —— cache mount 不进镜像，
+# 浏览器就被留在缓存里，镜像里目录是空的，playwright 启动会直接报找不到浏览器。
+# 浏览器必须烤进镜像层（重建容器会清掉可写层，靠它才能活下来）。
 # build-essential 在这里就清掉（而不是留到最后）：playwright --with-deps 装的系统
 # 库必须排在 purge 之后，否则会被 --auto-remove 顺手删掉。
 # ARG 放在本层正前方：它若声明在更早的位置，换镜像源会连带使依赖层失效。
@@ -148,7 +150,6 @@ ARG PLAYWRIGHT_DOWNLOAD_HOST=
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    --mount=type=cache,target=/root/.cache/ms-playwright \
     apt-get update \
     && apt-get install -y --no-install-recommends fonts-noto-cjk \
     && apt-get purge -y --auto-remove build-essential \
