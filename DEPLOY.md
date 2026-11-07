@@ -410,6 +410,22 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
+### 1.0.3b4 合并（2026-11-07，**已合并待上线**）
+
+- 分支 `merge/upstream-1.0.3b4`，合并提交 `0bda3fdd`（2 个父，pre-commit 全绿）。
+  **未部署** —— 生产仍是 `octop:latest` = `82a53d66`/`6a256bcb` 血统的 1.0.2、schema 22。
+- 上游把内置专家砍到 3 个并改为市场下载；我们**保留全部 29 个**（含 general-assistant、
+  剧本/分镜/快图、business-operations 等），13 个文件取上游删除前最后一版 + 去品牌。
+- 迁移顺延 022→023/024/025/026，水位 **22 → 26**（见 `NOTICE.md` 第 7 步的完整清单）。
+- Dockerfile 换成上游的 full/lite + 系统 Chromium 烘焙，但把「字体 + 桌面烘焙」搬回
+  `COPY src/` 之前，并重新加回 `UV_CACHE_DIR` / `UV_HTTP_TIMEOUT`（上游删了）。
+- 验证：`make all` 5469 passed；`tsc -b` + `build-frontend` 通过；vitest 的 13 个失败
+  在上游干净检出中同样失败（既有红测试）；桌面端 go build 通过。
+- 上线时要做：① 同步 `uv.lock`（md5 `fe29f60f4c3d3682af6f01fc5d1f3c1d`）；
+  ② 迁移前备份 DB；③ 起容器后核对 `select version from _schema_version` = 26、
+  `skill_packages` 同时有 `allow_download`/`shared`、新表 `user_group`/`user_mfa` 存在；
+  ④ 核对浏览器能力（新镜像不再装 Playwright，走系统 Chromium）。
+
 - **2026-10-19 05:04 · 1.0.2b9**（合并上游 b9，253 文件 +15364/−581）
   运行代码 = `ba4232a7`，镜像 `95ee0a7af122` 2.86GB，**schema 21 → 22**（上游的
   `021_skill_package_download` 与我们的 `021_invite_multi_use` 撞号，重命名为 022，
