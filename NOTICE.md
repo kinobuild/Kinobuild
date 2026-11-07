@@ -167,14 +167,29 @@ MIT 许可不包含商标授权；「KinoGuild」名称与标识不随代码一�
    提供，其文案因此不在检查之列。
 7. **核对迁移号**：迁移号是两个仓库各写各的，**撞号必炸而 git 不会报冲突**（文件名不
    同）—— `_list_migrations` 见到重复号直接抛 `RuntimeError`
-   （`src/octop/infra/db/migrate.py:57`），服务启动即失败。本仓库的
-   `021_invite_multi_use` 已随 1.0.2b8 上到生产、库里水位就是 21，因此上游 b9 的
-   `021_skill_package_download` 改名为 `022_…`。要跟着一起改：两份 SQL 里的
-   `UPDATE _schema_version SET version = 22`、`migrate.py` 的 SQLite 分支与水位钳回阶梯
-   （`max_version >= 22`）、`tests/unit/db/*` 和 `tests/unit/backup/test_system_archive.py`
-   的版本断言。**不要反过来改我们的 021**：生产库已经应用过它，重跑
+   （`src/octop/infra/db/migrate.py:57`），服务启动即失败。
+   KinoGuild 独占的迁移号是 **021**、**022**（`021_invite_multi_use` 随 1.0.2b8 上线、
+   `022_skill_package_download` 随 1.0.2 上线，库里水位 22）。上游从 1.0.3 起一次带了
+   四个新迁移（技能包分享、用户组、用户组档案、MFA），全部落在 022–025，于是**整体顺延**：
+
+   | 上游原名 | 我们改成 | 内容 |
+   |---|---|---|
+   | `022_skill_package_shared` | `023_…` | `skill_packages.shared` |
+   | `023_user_groups` | `024_…` | `user_group` / `user_group_member` / `resource_group_grant` |
+   | `024_user_group_profile` | `025_…` | 用户组头像/启用、知识库与 bridge 的 `icon_url` |
+   | `025_user_mfa` | `026_…` | TOTP/passkey、`instance_lease` |
+
+   顺延要同步改的地方（漏一处就白改）：两份 SQL 的头部说明与
+   `UPDATE _schema_version SET version = N`；`migrate.py` 的
+   `if version == N:` 分支；两处水位钳回阶梯（SQLite 的 `max_version >= N` 与
+   PostgreSQL 修复阶梯）；`tests/unit/db/*`、`tests/unit/users/test_group_access.py`、
+   `tests/unit/backup/test_system_archive.py` 的版本断言（新水位 **26**）；
+   `AGENTS.md` 里"currently `v == 26`"那句。
+
+   **不要反过来改我们的 021/022**：生产库已经应用过它们，重跑
    `ALTER TABLE … ADD COLUMN` 会报重复列。上线后核对
-   `select version from _schema_version` 应为 22、`skill_packages` 应多出 `allow_download`。
+   `select version from _schema_version` 应为 **26**、`skill_packages` 同时有
+   `allow_download` 与 `shared`、并新出现 `user_group` / `user_mfa` 等表。
 
 第 2～4 步、第 6 步和第 7 步都有测试兜底；第 5 步没有。合并后若 `uv.lock` 有变化，部署时
 必须把锁文件一起同步到服务器（见 `DEPLOY.md` 第 3.5 节）。

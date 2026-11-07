@@ -27,6 +27,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import cx from "classnames";
 
 import {
   mediaGenerationApi,
@@ -42,7 +43,7 @@ import styles from "./index.module.less";
 
 const { Text } = Typography;
 
-interface MediaProviderDraft extends MediaProviderSettings {
+export interface MediaProviderDraft extends MediaProviderSettings {
   api_key: string;
 }
 
@@ -74,6 +75,44 @@ function nextProviderId(
   let suffix = 2;
   while (ids.has(`${provider}-${suffix}`)) suffix += 1;
   return `${provider}-${suffix}`;
+}
+
+/**
+ * Ant Design hands back whatever a mounted input produced, so a string field
+ * is only a string when its input was rendered. The image/video model inputs
+ * unmount when their tool switch is off, which makes them absent from
+ * ``validateFields()``; read every field defensively instead of calling
+ * ``.trim()`` on a value the form never supplied.
+ */
+export function trimmedFormString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/**
+ * Build the provider draft a modal action (save, verify, test) should submit.
+ *
+ * ``validated`` holds the fields ``validateFields()`` returned — only the
+ * currently mounted ones. ``stored`` is the whole form store, which also keeps
+ * the preserved value of an unmounted field. The model inputs disappear from
+ * the form when "启用生图工具"/"启用生视频工具" is switched off, and without
+ * the fallback the model was read as ``undefined``, ``.trim()`` threw, and
+ * every button in the modal silently did nothing.
+ */
+export function buildProviderDraft(
+  editingProvider: MediaProviderDraft,
+  validated: Partial<ProviderFormValues>,
+  stored: Partial<ProviderFormValues>,
+): MediaProviderDraft {
+  const merged = { ...stored, ...validated };
+  return {
+    ...editingProvider,
+    ...validated,
+    display_name: trimmedFormString(validated.display_name),
+    base_url: trimmedFormString(validated.base_url),
+    image_model: trimmedFormString(merged.image_model),
+    video_model: trimmedFormString(merged.video_model),
+    api_key: trimmedFormString(validated.api_key),
+  };
 }
 
 function providerInput(provider: MediaProviderDraft): MediaProviderInput {
@@ -211,21 +250,16 @@ export function MediaGenerationSettingsPanel() {
       if (!config) return null;
       const preset = presetMap.get(providerName);
       if (!preset) return null;
-      // 能力开关必须跟着预设的模型列表走：有的适配器只做图像（没有视频模型），
-      // 这里若写死 video_enabled=true，弹窗就会显示一个「必填但无从填写」的视频模型
-      // 字段，保存时表单校验失败并被静默吞掉——表现就是「点保存没反应」。
-      const supportsImage = preset.image_models.length > 0;
-      const supportsVideo = preset.video_models.length > 0;
       return {
         id: nextProviderId(providerName, config.providers),
         provider: providerName,
         display_name: preset.display_name,
         enabled: true,
         base_url: preset.base_url,
-        image_enabled: supportsImage,
-        video_enabled: supportsVideo,
-        image_model: preset.image_models[0] ?? "",
-        video_model: preset.video_models[0] ?? "",
+        image_enabled: true,
+        video_enabled: true,
+        image_model: preset.image_models[0] || "",
+        video_model: preset.video_models[0] || "",
         api_key_set: false,
         configured: false,
         api_key: "",
@@ -277,21 +311,11 @@ export function MediaGenerationSettingsPanel() {
     if (!editingProvider) return null;
     try {
       const values = await form.validateFields();
-      // 必须容忍字段缺席：只做图像的适配器（如 OpenAI 兼容中转站）不渲染视频字段，
-      // 而未注册的 Form.Item 不会出现在 validateFields() 的返回值里。直接
-      // `values.video_model.trim()` 会抛 TypeError，被下面的 catch 吞掉，
-      // 表现就是「点保存毫无反应」——连一句提示都没有。
-      const text = (value: unknown): string =>
-        typeof value === "string" ? value.trim() : "";
-      return {
-        ...editingProvider,
-        ...values,
-        display_name: text(values.display_name),
-        base_url: text(values.base_url),
-        image_model: text(values.image_model),
-        video_model: text(values.video_model),
-        api_key: text(values.api_key),
-      };
+      // `validateFields()` only covers mounted fields, and the model inputs
+      // unmount when their tool switch is off. Read the preserved store values
+      // back in so a disabled tool keeps the model it was configured with.
+      const stored = form.getFieldsValue(true) as Partial<ProviderFormValues>;
+      return buildProviderDraft(editingProvider, values, stored);
     } catch {
       return null;
     }
@@ -300,12 +324,7 @@ export function MediaGenerationSettingsPanel() {
   const handleSaveProvider = async () => {
     if (!config) return;
     const provider = await providerFromForm();
-    if (!provider) {
-      // 表单校验失败时不能静默 return：字段可能在滚动区外，用户只会看到
-      // 「点了保存没反应」。明确提示一次。
-      message.error(t("mediaGeneration.validationFailed"));
-      return;
-    }
+    if (!provider) return;
     const providers =
       providerModalMode === "create"
         ? [...config.providers, provider]
@@ -546,11 +565,12 @@ export function MediaGenerationSettingsPanel() {
                 onMouseEnter={() => setHoveredCard(provider.id)}
                 onMouseLeave={() => setHoveredCard(null)}
                 onClick={() => openProviderModal("edit", provider)}
-                className={`${styles.providerCard} ${
-                  isHover ? styles.providerCardHover : ""
-                } ${statusReady ? styles.configuredCard : ""} ${
-                  provider.enabled ? "" : styles.disabledCard
-                }`}
+                className={cx(
+                  styles.providerCard,
+                  isHover && styles.providerCardHover,
+                  statusReady && styles.configuredCard,
+                  !provider.enabled && styles.disabledCard,
+                )}
               >
                 <div className={styles.cardMain}>
                   <div className={styles.cardHeader}>
@@ -573,9 +593,10 @@ export function MediaGenerationSettingsPanel() {
                       </div>
                     </div>
                     <div
-                      className={`${styles.status} ${
-                        statusReady ? styles.statusReady : ""
-                      }`}
+                      className={cx(
+                        styles.status,
+                        statusReady && styles.statusReady,
+                      )}
                     >
                       <span className={styles.statusDot} />
                       <span>
@@ -712,9 +733,11 @@ export function MediaGenerationSettingsPanel() {
                 onMouseEnter={() => setHoveredCard(cardId)}
                 onMouseLeave={() => setHoveredCard(null)}
                 onClick={() => openCreateModal(preset.provider)}
-                className={`${styles.providerCard} ${styles.presetCard} ${
-                  isHover ? styles.providerCardHover : ""
-                }`}
+                className={cx(
+                  styles.providerCard,
+                  styles.presetCard,
+                  isHover && styles.providerCardHover,
+                )}
               >
                 <div className={styles.cardMain}>
                   <div className={styles.cardHeader}>

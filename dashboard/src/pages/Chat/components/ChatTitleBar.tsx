@@ -10,6 +10,7 @@ import {
   Trash2,
   GitFork,
 } from "lucide-react";
+import cx from "classnames";
 import { confirmDeleteConversation } from "../utils/deleteConversation";
 import type { Session } from "../hooks/useSessions";
 import SessionChannelIcon from "./SessionChannelIcon";
@@ -26,7 +27,10 @@ interface ChatTitleBarProps {
   onRename: (id: string, name: string) => void;
   onPin: (id: string, pinned: boolean) => void;
   onFork: (id: string) => void;
-  onDelete: (id: string, compact: boolean) => void | Promise<boolean | void>;
+  onDelete: (
+    id: string,
+    compact: boolean,
+  ) => void | Promise<boolean | null | void>;
   forkDisabled?: boolean;
   forkDisabledHint?: string;
   isTeam?: boolean;
@@ -115,9 +119,9 @@ export default function ChatTitleBar({
         icon: <Trash2 size={14} />,
         danger: true,
         onClick: () => {
-          confirmDeleteConversation(t, (compact) => {
-            void onDelete(session.id, compact);
-          });
+          confirmDeleteConversation(t, (compact) =>
+            onDelete(session.id, compact),
+          );
         },
       },
     ],
@@ -138,7 +142,7 @@ export default function ChatTitleBar({
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
-    <div className={`${styles.chatTitleBar} ${DESKTOP_DRAG_REGION_CLASS}`}>
+    <div className={cx(styles.chatTitleBar, DESKTOP_DRAG_REGION_CLASS)}>
       <div className={styles.chatTitleLeft}>
         <SessionChannelIcon
           channelType={session.channelType}
@@ -193,9 +197,10 @@ export default function ChatTitleBar({
             >
               <button
                 type="button"
-                className={`${styles.chatTitleEditBtn} ${
-                  moreOpen ? styles.chatTitleHoverShown : ""
-                }`}
+                className={cx(
+                  styles.chatTitleEditBtn,
+                  moreOpen && styles.chatTitleHoverShown,
+                )}
                 aria-label={t("common.more", "更多")}
               >
                 <MoreVertical size={14} strokeWidth={2} aria-hidden />

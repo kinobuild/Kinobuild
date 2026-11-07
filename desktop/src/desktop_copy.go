@@ -28,11 +28,17 @@ const (
 	copyStatusNeedServer       = "status.need_server"
 	copyStatusConnected        = "status.connected"
 	copyStatusConnectedUnknown = "status.connected_no_version"
+	copyTraySettings           = "tray.settings"
+	copyTrayShowMain           = "tray.show_main"
+	copyTrayQuit               = "tray.quit"
 )
 
 var desktopCopy = map[Locale]map[string]string{
 	LocaleEN: {
 		copyStatusNeedServer:       "Enter your server address to continue",
+		copyTraySettings:           "Settings",
+		copyTrayShowMain:           "Show KinoGuild",
+		copyTrayQuit:               "Quit",
 		copyStatusConnected:        "Connected to %s (server %s)",
 		copyStatusConnectedUnknown: "Connected to %s (server did not report a version)",
 		copyStatusConnecting:       "Connecting to KinoGuild…",
@@ -60,6 +66,9 @@ var desktopCopy = map[Locale]map[string]string{
 	},
 	LocaleZH: {
 		copyStatusNeedServer:       "请先填写服务器地址",
+		copyTraySettings:           "设置",
+		copyTrayShowMain:           "显示 KinoGuild",
+		copyTrayQuit:               "退出",
 		copyStatusConnected:        "已连接 %s（服务器版本 %s）",
 		copyStatusConnectedUnknown: "已连接 %s（服务器未报告版本）",
 		copyStatusConnecting:       "正在连接 KinoGuild…",

@@ -16,9 +16,54 @@
     "IDENTITY.md"
   ],
   "quick_prompts": [
-    "基于这张图做一张淘宝主图，带卖点文案",
-    "换个场景，做成居家氛围的主图",
-    "做一张白底主图，加中文卖点"
+    {
+      "title": {
+        "zh": "淘宝主图",
+        "en": "Taobao main image"
+      },
+      "description": {
+        "zh": "按平台规范出一张带卖点的主图",
+        "en": "Platform-ready main image with copy"
+      },
+      "prompt": {
+        "zh": "基于这张图做一张淘宝主图（800×800，主体占比≥80%），带 2~3 条卖点文案，中文：\n\n",
+        "en": "Turn this photo into an 800x800 Taobao main image with 2-3 selling points: \n\n"
+      },
+      "color": "#e8f4ff",
+      "icon_name": "image"
+    },
+    {
+      "title": {
+        "zh": "白底图",
+        "en": "White-background image"
+      },
+      "description": {
+        "zh": "电商平台要求纯白底的干净主图",
+        "en": "Clean pure-white listing image"
+      },
+      "prompt": {
+        "zh": "把这张图做成纯白底主图，去掉背景杂物，保留真实质感，不要文字：\n\n",
+        "en": "Turn this into a pure-white-background listing image, keep the real texture, no text: \n\n"
+      },
+      "color": "#dcfce7",
+      "icon_name": "layers"
+    },
+    {
+      "title": {
+        "zh": "场景图",
+        "en": "Lifestyle scene"
+      },
+      "description": {
+        "zh": "换场景换成居家/户外氛围图",
+        "en": "Re-stage in a lifestyle scene"
+      },
+      "prompt": {
+        "zh": "换成居家氛围的使用场景图，保留产品本体不变，光线自然：\n\n",
+        "en": "Re-stage this product in a cozy home scene, keep the product unchanged: \n\n"
+      },
+      "color": "#fef3c7",
+      "icon_name": "home"
+    }
   ],
   "task_examples": {
     "zh": [

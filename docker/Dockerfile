@@ -7,14 +7,16 @@
 #
 # 用法（在仓库根目录执行，构建上下文为根目录）:
 #   docker build -f docker/Dockerfile -t octop:latest .
-#   docker run -d -p 8088:8088 -v octop-data:/data/.octop -e HOME=/data octop:latest
+#   docker run -d -p 8088:8088 --shm-size=1g -v octop-data:/data/.octop -e HOME=/data octop:latest
+#
+# --shm-size=1g 是启用远程桌面所必需的。Docker 默认 /dev/shm 只有 64MB，Xvnc 会起不来。
+# compose 文件里已经写了 shm_size: 1gb。
 #
 # 国内加速（可选，需 BuildKit，docker/docker_build.sh 默认已开启）:
 #   PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple \
 #   PIP_TRUSTED_HOST=mirrors.cloud.tencent.com \
 #   NPM_REGISTRY=https://mirrors.cloud.tencent.com/npm/ \
 #   APT_MIRROR=mirrors.cloud.tencent.com \
-#   PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright \
 #   bash docker/docker_build.sh
 #
 # 或直接传 build-arg:
@@ -29,6 +31,12 @@
 #
 # 或使用 Compose:
 #   docker compose -f docker/docker-compose.yml up -d
+#
+# 默认 OCTOP_IMAGE_VARIANT=full：虚拟桌面、系统浏览器、本地向量和 OCR 都在镜像里，
+# 桌面不会启动，用户在控制台确认后才启用。桌面安装已经带上 Chromium，不再另下
+# Playwright 浏览器。lite 去掉这些重依赖，镜像更小，发布标签是 :<version>-lite。
+# 运行时带 Node.js 20（node / npm / npx），供依赖 Node 的技能使用。
+# Laya 不打进镜像：CPU 版 PyTorch 加多语言检查点大约要 4 GB 磁盘、约 2 GB 内存。
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -91,7 +99,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             "$APT_MIRROR" "$APT_MIRROR" > /etc/apt/sources.list.d/debian.sources; \
     fi \
     && apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
         libffi-dev \
         libgl1 \
         libglib2.0-0 \
@@ -100,28 +107,28 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
+# 技能和专家 shell 会调用 node / npm / npx。从前端构建阶段复用 Node 20。
+# Docker 拷贝会展开软链接，因此 npm / npx 在这里按原路径重建。
+COPY --from=frontend-builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=frontend-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node --version && npm --version && npx --version
+
 COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /uvx /bin/
 
 WORKDIR /app
 
-# 先安装锁定依赖，仅改源码时可复用此层缓存
+# 先安装锁定依赖，仅改源码时可复用此层缓存。
+# full：桌面、本地向量、OCR。lite：只留运行所需的 browser extra。
+ARG OCTOP_IMAGE_VARIANT=full
 COPY pyproject.toml uv.lock README.md LICENSE ./
 
-# Two build-time-only settings, placed here (right before the uv steps that need
-# them) so earlier layers keep their cache:
-#
-# UV_CACHE_DIR — this stage sets HOME=/data for the running container, so without
-# this uv reads/writes /data/.cache/uv while the --mount below is attached to
-# /root/.cache/uv and never gets used: every build re-downloaded the whole ~500 MB
-# dependency set, and the two `uv sync` steps each did it again. Pointing uv at the
-# mounted path makes the cache real — step 138 reuses step 109's downloads, and a
-# failed build keeps its partial progress for the next attempt.
-#
-# UV_HTTP_TIMEOUT — the default 30 s is not enough on a throttled link: an hour-long
-# `uv sync` died on `pillow` with "Failed to extract archive: … network timeout
-# (current value: 30s)" while a single-file curl to the same mirror reported 10 MB/s
-# (uv only holds ~2 paced connections). 300 s rides out the stall instead of failing
-# the whole layer.
+# 两条构建期设置，都紧贴使用它们的层，保证更早的层不失效：
+# UV_CACHE_DIR —— 本 stage 为运行时设了 HOME=/data，uv 于是读写 /data/.cache/uv，
+# 而 --mount 挂在 /root/.cache/uv；不指过去缓存等于没生效，每次构建重下全套依赖
+# （上游这份 Dockerfile 里这两条被去掉了，留着会退回每小时级的构建）。
+# UV_HTTP_TIMEOUT —— 默认 30s 在限速线路上撑不住，一次停顿就废掉整层。
 ENV UV_CACHE_DIR=/root/.cache/uv \
     UV_HTTP_TIMEOUT=300
 
@@ -130,50 +137,69 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         export UV_INDEX_URL="$PIP_INDEX_URL"; \
         if [ -n "$PIP_TRUSTED_HOST" ]; then export UV_INSECURE_HOST="$PIP_TRUSTED_HOST"; fi; \
     fi \
-    && uv sync --frozen --no-install-project --no-dev \
-        --extra browser --extra local-embedding --extra knowledge-ocr
+    && case "$OCTOP_IMAGE_VARIANT" in \
+         full|lite) ;; \
+         *) echo "OCTOP_IMAGE_VARIANT must be full or lite" >&2; exit 1 ;; \
+       esac \
+    && apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && if [ "$OCTOP_IMAGE_VARIANT" = "lite" ]; then \
+         uv sync --frozen --no-install-project --no-dev --extra browser; \
+       else \
+         uv sync --frozen --no-install-project --no-dev \
+           --extra browser --extra desktop --extra local-embedding --extra knowledge-ocr; \
+       fi \
+    && apt-get purge -y --auto-remove build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
-# --- 重资产层：中文字体 + Playwright Chromium -------------------------------
-# 这两样加起来约 240 MB，而且只依赖 venv 和 apt，**不依赖源码**。把它们放在
-# COPY src/ 之前，改一行代码就不会触发重下 —— 之前它们排在最后，导致晚高峰一次
-# 前端改动要重下 60MB 字体 + 177MB 浏览器，把 3 分钟的部署拖成 30 分钟。
-# 注意：**不要**给 /root/.cache/ms-playwright 加 cache mount —— cache mount 不进镜像，
-# 浏览器就被留在缓存里，镜像里目录是空的，playwright 启动会直接报找不到浏览器。
-# 浏览器必须烤进镜像层（重建容器会清掉可写层，靠它才能活下来）。
-# build-essential 在这里就清掉（而不是留到最后）：playwright --with-deps 装的系统
-# 库必须排在 purge 之后，否则会被 --auto-remove 顺手删掉。
-# ARG 放在本层正前方：它若声明在更早的位置，换镜像源会连带使依赖层失效。
-ARG PLAYWRIGHT_DOWNLOAD_HOST=
+# --- 重资产层：中文字体 + 虚拟桌面（Xvnc + 系统 Chromium）---------------------
+# 它们只依赖 apt 与 venv，不依赖源码；把烘焙需要的脚本单独提前拷进来，就能让这一层
+# 落在 COPY src/ 之前 —— 改一行代码不会重下约 250MB 的桌面组件和字体。
+# 随后全量 COPY src/ 会把这些文件原样覆盖，无副作用。
+COPY docker/bake-desktop.sh /usr/local/bin/bake-desktop.sh
+COPY src/octop/infra/control/desktop/scripts/ /app/src/octop/infra/control/desktop/scripts/
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update \
-    && apt-get install -y --no-install-recommends fonts-noto-cjk \
-    && apt-get purge -y --auto-remove build-essential \
-    && if [ -n "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_DOWNLOAD_HOST"; fi \
-    && playwright install --with-deps chromium \
-    && rm -rf /var/lib/apt/lists/*
+    if [ "$OCTOP_IMAGE_VARIANT" = "lite" ]; then \
+      mkdir -p /etc/octop \
+      && printf '%s\n' '{"desktop": false, "browser": false, "laya": false}' \
+        > /etc/octop/bundled-components.json; \
+    else \
+      chmod +x /usr/local/bin/bake-desktop.sh \
+      && apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk \
+      && bash /usr/local/bin/bake-desktop.sh \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY src/ ./src/
 COPY --from=frontend-builder /build/src/octop/dashboard/ ./src/octop/dashboard/
 
 COPY .env.example ./
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/bake-desktop.sh
 
-# 只装项目本体：依赖层、字体、浏览器都已在前面的层里，这里仅剩「把 octop 装进
-# venv + 导入自检」，因此只改 src/ 时代价很小。
+# pynput 在 import 时会连接 X。full 的无头构建只确认包已安装，不加载后端。
+ARG OCTOP_IMAGE_VARIANT=full
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ -n "$PIP_INDEX_URL" ]; then \
         export UV_INDEX_URL="$PIP_INDEX_URL"; \
         if [ -n "$PIP_TRUSTED_HOST" ]; then export UV_INSECURE_HOST="$PIP_TRUSTED_HOST"; fi; \
     fi \
-    && uv sync --frozen --no-dev \
-        --extra browser --extra local-embedding --extra knowledge-ocr \
-    && .venv/bin/python -c "import cv2, fastembed, huggingface_hub, rapidocr, onnxruntime, pymupdf" \
+    && if [ "$OCTOP_IMAGE_VARIANT" = "lite" ]; then \
+         uv sync --frozen --no-dev --extra browser \
+         && .venv/bin/python -c "import octop"; \
+       else \
+         uv sync --frozen --no-dev \
+           --extra browser --extra desktop --extra local-embedding --extra knowledge-ocr \
+         && .venv/bin/python -c "import cv2, fastembed, huggingface_hub, mss, rapidocr, onnxruntime, pymupdf; import importlib.util; assert importlib.util.find_spec('pynput')"; \
+       fi \
+    && if dpkg -s build-essential >/dev/null 2>&1; then \
+         # 依赖层通常已卸掉编译器；lite 没有 apt 列表，未安装就跳过。
+         apt-get purge -y --auto-remove build-essential; \
+       fi \
     && rm -rf /tmp/*
 
 RUN mkdir -p /data/.octop

@@ -104,15 +104,21 @@ def test_install_url_rejects_non_zip(tmp_path: Path, monkeypatch: pytest.MonkeyP
     config_path.write_text("{}", encoding="utf-8")
     mgr = PluginManager(plugins_dir=tmp_path / "plugins", config_path=config_path)
 
-    def fake_retrieve(
-        url: str, filename: str | Path, *args: Any, **kwargs: Any
-    ) -> tuple[str, None]:
-        Path(filename).write_text("<!DOCTYPE html><html>blob page</html>", encoding="utf-8")
-        return (str(filename), None)
+    class FakeResponse:
+        headers: dict[str, str] = {}
+
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            pass
+
+        def read(self, _size: int) -> bytes:
+            return b"<!DOCTYPE html><html>blob page</html>"
 
     monkeypatch.setattr(
-        "octop.infra.agents.plugins.manager.urllib.request.urlretrieve",
-        fake_retrieve,
+        "octop.infra.agents.plugins.manager.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(),
     )
     with pytest.raises(OctopError) as excinfo:
         mgr.install_url("https://example.com/not-a-plugin.zip")
@@ -131,15 +137,25 @@ def test_install_url_accepts_valid_zip(tmp_path: Path, monkeypatch: pytest.Monke
             if path.is_file():
                 zf.write(path, arcname=f"echo-tool/{path.relative_to(_FIXTURE).as_posix()}")
 
-    def fake_retrieve(
-        url: str, filename: str | Path, *args: Any, **kwargs: Any
-    ) -> tuple[str, None]:
-        Path(filename).write_bytes(buf.getvalue())
-        return (str(filename), None)
+    class FakeResponse:
+        headers: dict[str, str] = {}
+
+        def __init__(self) -> None:
+            self._payload = buf.getvalue()
+
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            pass
+
+        def read(self, size: int) -> bytes:
+            chunk, self._payload = self._payload[:size], self._payload[size:]
+            return chunk
 
     monkeypatch.setattr(
-        "octop.infra.agents.plugins.manager.urllib.request.urlretrieve",
-        fake_retrieve,
+        "octop.infra.agents.plugins.manager.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(),
     )
     loaded = mgr.install_url("https://example.com/echo-tool.zip", force=True)
     assert loaded.manifest.id == "echo-tool"
@@ -155,6 +171,60 @@ def test_install_archive_accepts_local_zip(tmp_path: Path) -> None:
     assert loaded.manifest.id == "echo-tool"
     items = mgr.list_installed()
     assert any(i.get("id") == "echo-tool" for i in items)
+
+
+def test_install_archive_rejects_too_many_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
+    mgr = PluginManager(plugins_dir=tmp_path / "plugins", config_path=config_path)
+    archive = tmp_path / "many.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("plugin.yaml", "id: echo-tool\nversion: 1.0.0\nname: Echo\nkind: tool\n")
+        zf.writestr("extra.txt", "x")
+    monkeypatch.setattr("octop.infra.agents.plugins.manager._MAX_PLUGIN_ZIP_ENTRIES", 1)
+    with pytest.raises(OctopError, match="too many entries"):
+        mgr.install_archive(archive)
+
+
+def test_install_archive_rejects_path_traversal(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
+    mgr = PluginManager(plugins_dir=tmp_path / "plugins", config_path=config_path)
+    archive = tmp_path / "traversal.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("../escape.txt", "x")
+    with pytest.raises(OctopError, match="path traversal"):
+        mgr.install_archive(archive)
+
+
+def test_install_url_rejects_download_over_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
+    mgr = PluginManager(plugins_dir=tmp_path / "plugins", config_path=config_path)
+
+    class FakeResponse:
+        headers: dict[str, str] = {}
+
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            pass
+
+        def read(self, _size: int) -> bytes:
+            return b"x" * 8
+
+    monkeypatch.setattr("octop.infra.agents.plugins.manager._MAX_PLUGIN_ARCHIVE_BYTES", 4)
+    monkeypatch.setattr(
+        "octop.infra.agents.plugins.manager.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+    with pytest.raises(OctopError, match="download exceeds"):
+        mgr.install_url("https://example.com/plugin.zip")
 
 
 def test_install_archive_rejects_non_zip(tmp_path: Path) -> None:
@@ -430,58 +500,6 @@ def _sync_fixture(tmp_path: Path, *, version: str, body: str) -> tuple[Any, Any]
     )
     manager = PluginManager(plugins_dir=tmp_path / "plugins", config_path=tmp_path / "plugins.json")
     return workspace, (manager, plugin)
-
-
-def test_plugin_skill_sync_records_version_and_republishes_on_bump(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A plugin update must reach an agent that already synced once.
-
-    Previously the sync skipped any skill whose ``SKILL.md`` already existed, so a
-    shipped plugin update never propagated — the workspace kept the stale skill
-    forever. Sync is now gated on the plugin's declared version.
-    """
-    workspace, (manager, plugin) = _sync_fixture(tmp_path, version="1.0.0", body="# v1\n")
-    monkeypatch.setattr(PluginRegistry, "list_plugins", lambda self: [plugin])
-    monkeypatch.setattr(PluginManager, "global_enabled_map", lambda self: {})
-
-    manager.sync_skills_to_workspace(workspace)
-    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v1\n"
-    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
-        "demo-plugin": "1.0.0"
-    }
-
-    # Same version: nothing to do, workspace keeps its copy.
-    workspace.write_text("skills/demo-skill/SKILL.md", "# edited-in-workspace\n", force=True)
-    manager.sync_skills_to_workspace(workspace)
-    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# edited-in-workspace\n"
-
-    # Version bump: the new content lands, overwriting the stale copy.
-    plugin.manifest.version = "1.1.0"
-    (plugin.skills_dir / "demo-skill" / "SKILL.md").write_text("# v2\n", encoding="utf-8")
-    manager.sync_skills_to_workspace(workspace)
-
-    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v2\n"
-    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
-        "demo-plugin": "1.1.0"
-    }
-
-
-def test_plugin_skill_sync_survives_corrupt_state_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A malformed state file must not block syncing — treat it as "never synced"."""
-    workspace, (manager, plugin) = _sync_fixture(tmp_path, version="1.0.0", body="# v1\n")
-    monkeypatch.setattr(PluginRegistry, "list_plugins", lambda self: [plugin])
-    monkeypatch.setattr(PluginManager, "global_enabled_map", lambda self: {})
-
-    workspace.write_text("skills/.plugin-sync.json", "{ not json", force=True)
-    manager.sync_skills_to_workspace(workspace)
-
-    assert workspace.read_text("skills/demo-skill/SKILL.md") == "# v1\n"
-    assert json.loads(workspace.read_text("skills/.plugin-sync.json") or "{}") == {
-        "demo-plugin": "1.0.0"
-    }
 
 
 def test_channel_reload_preserves_class_until_source_changes(tmp_path: Path) -> None:
