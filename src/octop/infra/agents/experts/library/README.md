@@ -1,4 +1,4 @@
-# Expert template library (read-only bundled content)
+# Expert template library
 
 This directory holds **static expert templates** shipped with KinoGuild: manifests,
 markdown persona files, and optional skill scripts. It is **not** runtime Python

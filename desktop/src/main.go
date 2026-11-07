@@ -42,6 +42,8 @@ type App struct {
 
 	statusMu sync.Mutex
 	status   string
+
+	setTrayMenuLocale func(Locale)
 }
 
 func (a *App) ServiceName() string { return "desktop" }
@@ -106,6 +108,7 @@ func (a *App) SaveSettings(next Settings) (Settings, error) {
 		return cur, err
 	}
 	saved := a.store.get()
+	a.updateTrayMenuLocale(cur.Locale, saved.Locale)
 	a.applyDashboardPrefs(saved)
 	return saved, nil
 }
@@ -200,6 +203,14 @@ func (a *App) setAutostart(on bool) (bool, error) {
 		return status.Enabled, fmt.Errorf("autostart state did not update")
 	}
 	return status.Enabled, nil
+}
+
+// updateTrayMenuLocale rebuilds the tray menu after the user switches language.
+func (a *App) updateTrayMenuLocale(previous, current Locale) {
+	if previous == current || a.setTrayMenuLocale == nil {
+		return
+	}
+	a.setTrayMenuLocale(current)
 }
 
 func (a *App) applyDashboardPrefs(s Settings) {
@@ -565,12 +576,15 @@ func main() {
 	tray.SetTooltip("KinoGuild")
 	tray.AttachWindow(settingsWin).WindowOffset(6)
 	showSettings := func() { tray.ShowWindow() }
+	api.setTrayMenuLocale = func(locale Locale) {
+		tray.SetMenu(newTrayMenu(locale, showSettings, api.showWindow, api.requestQuit))
+	}
+	api.setTrayMenuLocale(store.get().Locale)
 	if trayLeftClickShowsSettings(runtime.GOOS) {
 		tray.OnClick(showSettings)
 	} else {
 		tray.OnClick(func() { api.onTrayLeftClick() })
 	}
-	tray.OnRightClick(showSettings)
 
 	if _, err := api.setAutostart(store.get().Autostart); err != nil {
 		log.Printf("sync autostart: %v", err)

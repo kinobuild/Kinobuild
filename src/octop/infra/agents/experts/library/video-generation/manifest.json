@@ -16,9 +16,54 @@
     "IDENTITY.md"
   ],
   "quick_prompts": [
-    "按这段分镜提示词出片，竖屏 9:16",
-    "用这张参考图做首帧，出一个镜头的视频",
-    "这几个镜头要保持同一个角色，帮我把一致性串起来"
+    {
+      "title": {
+        "zh": "竖屏出片",
+        "en": "Vertical clip"
+      },
+      "description": {
+        "zh": "把分镜提示词做成 9:16 成片",
+        "en": "Render storyboard prompts as 9:16 video"
+      },
+      "prompt": {
+        "zh": "按这段分镜提示词出片，竖屏 9:16，单镜头 4~6 秒，保持人物一致性：\n\n",
+        "en": "Render this storyboard as a 9:16 clip, 4-6s per shot, keep characters consistent: \n\n"
+      },
+      "color": "#e8f4ff",
+      "icon_name": "video"
+    },
+    {
+      "title": {
+        "zh": "镜头清单",
+        "en": "Shot list"
+      },
+      "description": {
+        "zh": "先拆镜头再决定出哪几条",
+        "en": "Plan shots before rendering"
+      },
+      "prompt": {
+        "zh": "把这段剧情拆成 6~10 个镜头，标出景别、时长、运镜与关键要素：\n\n",
+        "en": "Break this story into 6-10 shots with framing, duration, camera move and key props: \n\n"
+      },
+      "color": "#f3e8ff",
+      "icon_name": "list"
+    },
+    {
+      "title": {
+        "zh": "首尾帧衔接",
+        "en": "First/last frame"
+      },
+      "description": {
+        "zh": "两段视频之间怎么接得顺",
+        "en": "Keep two clips continuous"
+      },
+      "prompt": {
+        "zh": "这两段镜头怎么接才自然？给出转场方式与首尾帧要求：\n\n",
+        "en": "How should these two shots connect? Suggest the transition and first/last frames: \n\n"
+      },
+      "color": "#fee2e2",
+      "icon_name": "shuffle"
+    }
   ],
   "task_examples": {
     "zh": [
