@@ -15,9 +15,11 @@ from octop.i18n.domains.attachment import (
 )
 from octop.infra.gateway.media.attachment_hints import (
     VISION_MAX_COUNT,
+    VISION_TOTAL_MAX_BYTES,
     content_blocks_need_vision,
     hints_from_content_parts,
     materialize_image_part,
+    vision_block_bytes,
 )
 from octop.infra.gateway.media.ingress import AgentBackedMediaBackend
 from octop.infra.gateway.process.message_keys import images_from_message
@@ -171,6 +173,7 @@ async def build_content_from_message(
         )
 
     image_blocks: list[dict[str, Any]] = []
+    inlined_bytes = 0
     for part in vision_parts:
         block = await materialize_image_part(
             part,
@@ -186,6 +189,20 @@ async def build_content_from_message(
             if text:
                 file_hints.append(text)
             continue
+        size = vision_block_bytes(block)
+        if size and inlined_bytes + size > VISION_TOTAL_MAX_BYTES:
+            # Past the per-request byte budget: keep it as a path hint so the
+            # model still knows the file exists without inflating the request.
+            file_hints.extend(
+                hints_from_content_parts(
+                    [part],
+                    workspace=workspace,
+                    locale=locale,
+                    skip_vision_images=False,
+                )
+            )
+            continue
+        inlined_bytes += size
         image_blocks.append(block)
 
     extracted = await _extracted_document_texts(msg, media_backend=media_backend, locale=locale)

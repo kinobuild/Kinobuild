@@ -265,3 +265,115 @@ async def test_no_media_backend_degrades_to_path_hint_not_vision() -> None:
         assert not _has_image_url(content)
         assert isinstance(content, str)
         assert stored.data_path in content or "inbound/" in content
+
+
+def _inline_png_block(payload: bytes) -> dict[str, Any]:
+    """A ready-made inline vision block (already base64) for budget tests."""
+    return {
+        "type": "image_url",
+        "image_url": {"url": "data:image/png;base64," + base64.b64encode(payload).decode()},
+    }
+
+
+def test_vision_limits_are_configurable_and_clamped(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OCTOP_VISION_MAX_COUNT accepts sane values and falls back on bad ones."""
+    from octop.infra.gateway.media.attachment_hints import _env_int
+
+    monkeypatch.setenv("OCTOP_TEST_VISION_COUNT", "20")
+    assert _env_int("OCTOP_TEST_VISION_COUNT", 12, low=1, high=32) == 20
+    monkeypatch.setenv("OCTOP_TEST_VISION_COUNT", "999")
+    assert _env_int("OCTOP_TEST_VISION_COUNT", 12, low=1, high=32) == 32
+    monkeypatch.setenv("OCTOP_TEST_VISION_COUNT", "lots")
+    assert _env_int("OCTOP_TEST_VISION_COUNT", 12, low=1, high=32) == 12
+    monkeypatch.delenv("OCTOP_TEST_VISION_COUNT")
+    assert _env_int("OCTOP_TEST_VISION_COUNT", 12, low=1, high=32) == 12
+
+
+def test_default_vision_count_covers_multi_shot_flows() -> None:
+    """A product/storyboard turn needs more than the old four-image cap."""
+    from octop.infra.gateway.media.attachment_hints import VISION_MAX_COUNT
+
+    assert VISION_MAX_COUNT >= 8
+
+
+@pytest.mark.asyncio
+async def test_images_beyond_count_cap_degrade_to_path_hints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Image parts past the per-turn cap keep a path hint instead of vision bytes."""
+    from octop.infra.gateway.process import harness_request
+
+    monkeypatch.setattr(harness_request, "VISION_MAX_COUNT", 2)
+    with tempfile.TemporaryDirectory() as ws_dir:
+        workspace = BackendWorkspace(
+            LocalShellBackend(root_dir=ws_dir, virtual_mode=False),
+            ws_dir,
+        )
+        stored = [
+            await save_attachment(
+                workspace,
+                owner_id=1,
+                filename=f"shot{i}.png",
+                media_type="image/png",
+                data=_PNG,
+            )
+            for i in range(3)
+        ]
+        preview = f"/api/agents/agent-1/media/preview?source={stored[0].data_path}"
+        content: list[dict[str, Any]] = [{"type": "text", "text": "four shots"}]
+        for item in stored:
+            content.append(
+                {
+                    "type": "image",
+                    "source": {"type": "url", "url": preview, "media_type": "image/png"},
+                    "preview_url": preview,
+                    "workspace_path": item.data_path,
+                    "filename": item.filename,
+                }
+            )
+        turn = ChatTurnBody(text="four shots", messages=[{"role": "user", "content": content}])
+        msg = InboundMessage(
+            channel_id=WS_CHANNEL_ID,
+            channel_type=ThreadRegistry.CHANNEL_DASHBOARD,
+            content=content_parts_from_dashboard_turn(turn),
+        )
+        built = await build_content_from_message(
+            msg, media_backend=AgentBackedMediaBackend(workspace)
+        )
+        assert isinstance(built, list)
+        images = [b for b in built if isinstance(b, dict) and b.get("type") == "image_url"]
+        assert len(images) == 2
+        joined = "\n".join(
+            str(b.get("text") or "")
+            for b in built
+            if isinstance(b, dict) and b.get("type") == "text"
+        )
+        assert stored[2].data_path in joined
+
+
+def test_workspace_image_middleware_enforces_total_byte_budget() -> None:
+    """One request never inlines more than the byte budget; excess becomes text."""
+    from langchain_core.messages import HumanMessage
+
+    from octop.infra.agents.middleware.workspace_image import (
+        WorkspaceImageMaterializeMiddleware,
+    )
+
+    payload = b"x" * 300_000  # 300 KB decoded per block
+    blocks = [_inline_png_block(payload) for _ in range(4)]
+    middleware = WorkspaceImageMaterializeMiddleware(
+        workspace=None,  # inline blocks never touch the workspace
+        total_max_bytes=700_000,
+    )
+    messages = [HumanMessage(content=list(blocks))]
+    out = middleware._expand_messages_sync(messages)
+    prepared = out[0].content
+    assert isinstance(prepared, list)
+    kept = [b for b in prepared if isinstance(b, dict) and b.get("type") == "image_url"]
+    omitted = [
+        b
+        for b in prepared
+        if isinstance(b, dict) and b.get("type") == "text" and "byte budget" in str(b.get("text"))
+    ]
+    assert len(kept) == 2
+    assert len(omitted) == 2

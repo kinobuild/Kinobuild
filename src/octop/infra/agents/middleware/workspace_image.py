@@ -15,10 +15,12 @@ from typing import TYPE_CHECKING, Any
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
 
 from octop.infra.gateway.media.attachment_hints import (
+    VISION_TOTAL_MAX_BYTES,
     expand_workspace_image_ref,
     expand_workspace_image_ref_sync,
     fit_inline_image_block,
     is_workspace_image_ref,
+    vision_block_bytes,
 )
 
 if TYPE_CHECKING:
@@ -44,8 +46,33 @@ def _is_inline_data_image(block: object) -> bool:
 class WorkspaceImageMaterializeMiddleware(AgentMiddleware[Any, Any]):
     """Expand ``workspace://`` refs and fit oversized images before the provider call."""
 
-    def __init__(self, *, workspace: BackendWorkspace) -> None:
+    def __init__(
+        self,
+        *,
+        workspace: BackendWorkspace,
+        total_max_bytes: int = VISION_TOTAL_MAX_BYTES,
+    ) -> None:
         self._workspace = workspace
+        # One budget per model call: workspace refs only become bytes here, so
+        # this is the last place that can keep a many-image turn inside the
+        # provider's request size.
+        self._total_max_bytes = total_max_bytes
+
+    def _fit_budget(self, blocks: list[Any], used: list[int]) -> list[Any]:
+        out: list[Any] = []
+        for block in blocks:
+            size = vision_block_bytes(block)
+            if size and used[0] + size > self._total_max_bytes:
+                out.append(
+                    {
+                        "type": "text",
+                        "text": "[image omitted: this request reached the vision byte budget]",
+                    }
+                )
+                continue
+            used[0] += size
+            out.append(block)
+        return out
 
     def wrap_model_call(
         self,
@@ -80,12 +107,15 @@ class WorkspaceImageMaterializeMiddleware(AgentMiddleware[Any, Any]):
 
     def _expand_messages_sync(self, messages: Sequence[Any]) -> list[Any]:
         out: list[Any] = []
+        used = [0]
         for msg in messages:
             content = getattr(msg, "content", None)
             if not isinstance(content, list):
                 out.append(msg)
                 continue
-            new_blocks = [self._prepare_block_sync(block) for block in content]
+            new_blocks = self._fit_budget(
+                [self._prepare_block_sync(block) for block in content], used
+            )
             if _same_blocks(new_blocks, content):
                 out.append(msg)
                 continue
@@ -94,12 +124,15 @@ class WorkspaceImageMaterializeMiddleware(AgentMiddleware[Any, Any]):
 
     async def _expand_messages(self, messages: Sequence[Any]) -> list[Any]:
         out: list[Any] = []
+        used = [0]
         for msg in messages:
             content = getattr(msg, "content", None)
             if not isinstance(content, list):
                 out.append(msg)
                 continue
-            new_blocks = [await self._prepare_block(block) for block in content]
+            new_blocks = self._fit_budget(
+                [await self._prepare_block(block) for block in content], used
+            )
             if _same_blocks(new_blocks, content):
                 out.append(msg)
                 continue
