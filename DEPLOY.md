@@ -410,7 +410,34 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
-### 1.0.3b4 合并（2026-11-07，**已合并待上线**）
+### 1.0.3b4 上线（2026-11-08 01:51）✅
+
+- 分支 `merge/upstream-1.0.3b4` 合并提交 `0bda3fdd` 直接上了生产（上游 beta，用户知情）。
+- 镜像 `octop:1.0.3b4` = `abbbb6374ac6`，**4.63GB**（含 Xvnc + 系统 Chromium + 桌面会话；
+  比 1.0.2 的 2.86GB 大 1.8GB，主要是桌面栈与 cloud/OCR 新依赖）。
+- **schema 22 → 26**，42 张表，9 张新表全部就位；10 users / 27 agents / 24 threads 数据无损。
+- 回滚：`octop:rollback-pre-1.0.3b4`（`274b7c7c526f`，即 1.0.2）、DB 备份
+  `backups/octop-pre-1.0.3b4-20261108-0125.db.gz`、旧源码 `src.bak-20261108-0151`。
+- 验收 12 项全过：`/api/health` version=1.0.3b4、0 错误行、外网首页/下载页/api 均 200、
+  专家货架 25 个（自研 4 + 保留的上游专家 + 新增 ops-engineer/tencent-cvm-ops）、
+  3 个电商 agent 的 5/7/3 个技能完好、`/api/experts/hub` 与技能包接口 200、
+  容器内 Xvnc/chromium/33 个中文字体就绪。
+
+#### 构建踩坑（重要，下次直接照做）
+
+1. **`uv.lock` 锁的是 PyPI 官方 CDN 直链**（2768 处 `files.pythonhosted.org`）。
+   `uv sync --frozen` 照着这些 URL 下载，国内只有 ~65 KB/s —— 一次全量构建 90 分钟还没完。
+   解法：构建前把**构建目录**里的 `uv.lock` 临时替换
+   `https://files.pythonhosted.org` → `https://mirrors.aliyun.com/pypi`、
+   `https://pypi.org/simple` → `https://mirrors.aliyun.com/pypi/simple`（路径结构一致、哈希不变），
+   速度立刻到 14 MB/s，依赖层 100 秒装完。**仓库里的 `uv.lock` 不要改**。
+2. **BuildKit 缓存被清后会重新拉基座镜像**，而 `docker.io`/`ghcr.io` 在这台机器上常常为 0 KB/s。
+   急着上线时用旧构建器 + 本地基座镜像绕开：把 Dockerfile 里的 `--mount=type=cache…`
+   去掉生成 `docker/Dockerfile.smoke`，然后 `DOCKER_BUILDKIT=0 docker build -f …`。
+   代价：没有层缓存，全量构建约 10 分钟（镜像源正确的前提下）。
+3. `/dev/shm` 只有 64MB，远程桌面要 ~1GB —— compose 里已有 `shm_size: "1gb"`，别删。
+
+### 1.0.3b4 合并（2026-11-07，已合并）
 
 - 分支 `merge/upstream-1.0.3b4`，合并提交 `0bda3fdd`（2 个父，pre-commit 全绿）。
   **未部署** —— 生产仍是 `octop:latest` = `82a53d66`/`6a256bcb` 血统的 1.0.2、schema 22。
