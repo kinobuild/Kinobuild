@@ -410,6 +410,19 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
+### 额度与充值上线（2026-11-09 19:48）✅
+
+- 镜像 `octop:billing` = `1cb4744e95a6`，**schema 26 → 27**（新增 `quota_redeem_codes` 表）。
+- 回滚：`octop:rollback-pre-billing`（`124d3a183129`）、DB 备份
+  `backups/octop-pre-billing-20261109-1948.db.gz`、旧源码 `src.bak-20261109-1948`。
+- 新环境变量 `OCTOP_DEFAULT_TOKEN_QUOTA=3000000`（写在服务器专有的
+  `docker-compose.override.yml` 的 `environment:` 里 —— compose 的 `env_file` 只做变量
+  替换，**不会**自动注入容器，必须列进 `environment:`）。
+- 验收：`/api/quota-codes` 返回配额；管理员生成码 → 用户兑换后额度 880 万 → 980 万、
+  重复兑换返回 `QUOTA_CODE_ALREADY_USED`（中文提示）；`/api/usage/summary` 带
+  `token_quota/quota_used/quota_remaining`；新建用户自动带 300 万策略行；0 错误行。
+- 运维：充值码在「用量」页生成（管理员）与兑换（用户）；生成后线下收款发码。
+
 ### 1.0.3b4 上线（2026-11-08 01:51）✅
 
 - 分支 `merge/upstream-1.0.3b4` 合并提交 `0bda3fdd` 直接上了生产（上游 beta，用户知情）。
