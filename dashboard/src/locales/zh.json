@@ -243,7 +243,10 @@
     "MFA_LAST_FACTOR": "无法移除最后一个二次验证方式。",
     "WEBAUTHN_CONFIG_INVALID": "还不能使用通行密钥。请管理员在「应用设置 → 通行密钥」填写本站域名和完整网址。如果已经填过，请改用登记的那个网址打开。用 localhost 打开则不用填。",
     "WEBAUTHN_INVALID_DOMAIN": "通行密钥需要有效域名。请通过 http://localhost 打开（不要用 127.0.0.1 等 IP 地址）。",
-    "WEBAUTHN_LOGIN_DISABLED": "登录页的通行密钥登录已关闭。管理员可在「应用设置 → 通行密钥」中开启。"
+    "WEBAUTHN_LOGIN_DISABLED": "登录页的通行密钥登录已关闭。管理员可在「应用设置 → 通行密钥」中开启。",
+    "QUOTA_CODE_INVALID": "兑换码无效，请核对后重试。",
+    "QUOTA_CODE_ALREADY_USED": "这个兑换码已经被使用过了。",
+    "QUOTA_CODE_REVOKED": "这个兑换码已被作废，请联系客服。"
   },
   "nav": {
     "chat": "对话",
@@ -7574,5 +7577,37 @@
     "nameRequired": "请先填写名称",
     "failed": "润色失败，请稍后重试",
     "emptyResult": "模型未返回结果"
+  },
+  "usage": {
+    "quota": {
+      "title": "额度与充值",
+      "unlimited": "当前账号不限额度。",
+      "used": "已用",
+      "total": "总额度",
+      "remaining": "剩余",
+      "exhausted": "额度已用完，请兑换充值码或联系客服。",
+      "codePlaceholder": "输入充值码，例如 KG-XXXX-XXXX-XXXX",
+      "redeem": "兑换",
+      "redeemOk": "兑换成功，新额度 {n} token",
+      "redeemFailed": "兑换失败",
+      "adminTitle": "生成充值码（管理员）",
+      "count": "数量",
+      "tokensEach": "每张额度",
+      "generate": "生成",
+      "generateOk": "已生成 {n} 张充值码",
+      "generateFailed": "生成失败",
+      "copyAll": "复制全部",
+      "copied": "已复制到剪贴板",
+      "copyFailed": "复制失败，请手动选择",
+      "recent": "最近生成的充值码",
+      "colCode": "充值码",
+      "colTokens": "额度",
+      "colStatus": "状态",
+      "status": {
+        "unused": "未使用",
+        "redeemed": "已使用",
+        "revoked": "已作废"
+      }
+    }
   }
 }

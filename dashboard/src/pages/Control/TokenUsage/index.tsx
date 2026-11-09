@@ -40,6 +40,7 @@ import cx from "classnames";
 import PageShell from "../../../layouts/PageShell";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { UsageStats, type UsageStatItem } from "./UsageStats";
+import { QuotaCard } from "./QuotaCard";
 import { useUserRole } from "../../../hooks/useUserRole";
 import { request, requestBlob } from "../../../api/request";
 import { useAgent } from "../../../context/AgentContext";
@@ -1040,6 +1041,7 @@ export default function TokenUsagePage() {
       fill
     >
       <div className={styles.page}>
+        <QuotaCard />
         <Alert
           type="info"
           showIcon

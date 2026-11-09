@@ -13,6 +13,8 @@ from urllib.parse import quote_plus, urlparse
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_UPLOAD_MB = 100
+# 0 disables the default: a new account starts unlimited (upstream behavior).
+DEFAULT_DEFAULT_TOKEN_QUOTA = 0
 MIN_MAX_UPLOAD_MB = 1
 MAX_MAX_UPLOAD_MB = 1024
 DEFAULT_BROWSER_IDLE_TIMEOUT_MINUTES = 30
@@ -142,6 +144,8 @@ class OctopConfig:
     backup: BackupConfig = field(default_factory=BackupConfig)
     capabilities: CapabilitiesConfig = field(default_factory=CapabilitiesConfig)
     max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB
+    # Token quota stamped on every newly created account (0 = unlimited).
+    default_token_quota: int = DEFAULT_DEFAULT_TOKEN_QUOTA
     browser_idle_timeout_minutes: int = DEFAULT_BROWSER_IDLE_TIMEOUT_MINUTES
 
     @property
@@ -239,6 +243,19 @@ def _parse_backup_section(raw: object) -> BackupConfig:
 
 def upload_mb_to_bytes(mb: int) -> int:
     return int(mb) * 1024 * 1024
+
+
+def _parse_default_token_quota(raw: object, *, default: int) -> int:
+    """Parse ``OCTOP_DEFAULT_TOKEN_QUOTA``; negatives and junk fall back to *default*."""
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        logger.warning("default_token_quota is not int (%r); using %s", raw, default)
+        return default
+    if value < 0:
+        logger.warning("default_token_quota %s is < 0; using %s", value, default)
+        return default
+    return value
 
 
 def parse_max_upload_mb(raw: object, *, default: int = DEFAULT_MAX_UPLOAD_MB) -> int:
@@ -495,6 +512,10 @@ def load_config(path: Path) -> OctopConfig:
         merged["require_setup_password"] = _coerce_bool(
             "OCTOP_REQUIRE_SETUP_PASSWORD", v, bool(merged["require_setup_password"])
         )
+    if v := os.environ.get("OCTOP_DEFAULT_TOKEN_QUOTA"):
+        merged["default_token_quota"] = _parse_default_token_quota(
+            v, default=int(merged.get("default_token_quota", DEFAULT_DEFAULT_TOKEN_QUOTA))
+        )
     if v := os.environ.get("OCTOP_MAX_UPLOAD_MB"):
         merged["max_upload_mb"] = parse_max_upload_mb(
             v, default=int(merged.get("max_upload_mb", DEFAULT_MAX_UPLOAD_MB))
@@ -621,6 +642,10 @@ def load_config(path: Path) -> OctopConfig:
         backup=backup,
         capabilities=capabilities,
         max_upload_mb=int(merged.get("max_upload_mb", DEFAULT_MAX_UPLOAD_MB)),
+        default_token_quota=max(
+            0,
+            int(merged.get("default_token_quota", DEFAULT_DEFAULT_TOKEN_QUOTA)),
+        ),
         browser_idle_timeout_minutes=max(
             0,
             int(
