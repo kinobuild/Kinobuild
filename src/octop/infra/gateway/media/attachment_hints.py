@@ -6,6 +6,7 @@ import asyncio
 import base64
 import logging
 import mimetypes
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
@@ -40,9 +41,40 @@ logger = logging.getLogger(__name__)
 _IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
 _VISION_BLOCK_TYPES = frozenset({"image", "image_url", "input_image"})
 
+
+def _env_int(name: str, default: int, *, low: int, high: int) -> int:
+    """Read one integer env override, clamped to a safe range.
+
+    A malformed or out-of-range value logs a warning and falls back to
+    ``default`` / the nearest bound instead of failing the turn.
+    """
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("%s must be an integer (got %r); using %s", name, raw, default)
+        return default
+    if value < low or value > high:
+        clamped = min(max(value, low), high)
+        logger.warning("%s out of range (%s); clamping to %s", name, value, clamped)
+        return clamped
+    return value
+
+
 # Vision materialize limits — oversized / excess images become path hints.
 VISION_MAX_BYTES = 2 * 1024 * 1024
-VISION_MAX_COUNT = 4
+# How many images one turn may send to the model. 12 covers multi-shot product
+# and storyboard flows while staying inside provider per-request limits;
+# override with OCTOP_VISION_MAX_COUNT (1-32).
+VISION_MAX_COUNT = _env_int("OCTOP_VISION_MAX_COUNT", 12, low=1, high=32)
+# Decoded bytes one request may inline in total. Real photos are a few hundred
+# KB, so this only engages on pathological turns; images past the budget degrade
+# to a text placeholder instead of blowing the provider request size.
+VISION_TOTAL_MAX_BYTES = _env_int(
+    "OCTOP_VISION_TOTAL_MAX_BYTES", 12 * 1024 * 1024, low=1 << 20, high=64 << 20
+)
 # Longest edge placed on a provider request. 8000 px is inside Anthropic's
 # 8000 px limit and DeepSeek's 8192 px limit, so images already under it are
 # left byte-identical for every provider.
@@ -51,6 +83,24 @@ VISION_SAFE_MAX_SIDE = 8000
 # after the safe-edge fit. Not a provider size limit.
 VISION_MAX_SIDE = 1568
 VISION_JPEG_QUALITY = 85
+
+
+def vision_block_bytes(block: object) -> int:
+    """Decoded byte size carried by one vision block.
+
+    Path-only refs (``workspace://…``) count as zero here — they are inlined
+    later by the workspace-image middleware, which applies the same budget.
+    """
+    if not isinstance(block, dict):
+        return 0
+    url = block.get("url")
+    if not isinstance(url, str):
+        image_url = block.get("image_url")
+        url = image_url.get("url") if isinstance(image_url, dict) else image_url
+    if not isinstance(url, str) or not url.startswith("data:"):
+        return 0
+    _, _, payload = url.partition(",")
+    return (len(payload) * 3) // 4
 
 
 def is_image_media_type(media_type: str) -> bool:
@@ -729,6 +779,7 @@ __all__ = [
     "VISION_MAX_BYTES",
     "VISION_MAX_COUNT",
     "VISION_MAX_SIDE",
+    "VISION_TOTAL_MAX_BYTES",
     "VISION_SAFE_MAX_SIDE",
     "WORKSPACE_IMAGE_SCHEME",
     "InboundAttachmentMeta",
@@ -741,6 +792,7 @@ __all__ = [
     "inbound_attachments_from_parts",
     "is_av_media_type",
     "is_image_inbound",
+    "vision_block_bytes",
     "is_image_media_type",
     "is_preview_media_type",
     "is_vision_attachment",
