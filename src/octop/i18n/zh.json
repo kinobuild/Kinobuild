@@ -414,11 +414,11 @@
     "SETUP_PASSWORD_WRONG": "启动密码不正确。",
     "SETUP_RATE_LIMITED": "尝试验证次数过多，请稍后再试。",
     "SETUP_TOKEN_INVALID": "向导会话无效或已过期，请重新验证启动密码。",
-    "AGENT_NOT_FOUND": "未找到 Agent。",
+    "AGENT_NOT_FOUND": "未找到专家。",
     "AGENT_NOT_RUNNING": "此专家未启用。",
     "CHECKPOINT_DELETE_FAILED": "对话数据没有删除，会话已保留，请重试。",
-    "AGENT_FAILED": "Agent 启动失败。",
-    "AGENT_BUSY": "Agent 正忙。",
+    "AGENT_FAILED": "专家启动失败。",
+    "AGENT_BUSY": "专家正忙。",
     "AGENT_NAME_TAKEN": "该名称已被使用，请换一个名称。",
     "AGENT_ID_INVALID": "自定义 ID 无效：需 3-64 位字母/数字/下划线/连字符，且以字母或数字开头结尾。",
     "AGENT_ID_TAKEN": "该 ID 已被使用，请换一个 ID。",
@@ -441,7 +441,7 @@
     "CONNECTOR_MCP_URL_INVALID": "MCP 服务地址无效：{reason}",
     "CONNECTOR_MCP_HTTPS_REQUIRED": "「{host}」会被当作公网地址，必须使用 HTTPS。HTTP 仅适用于本机、私网 IP，以及 localhost、.local、.internal、*.docker.internal 这类主机名。",
     "CONNECTOR_KIND_UNSUPPORTED": "不支持的连接器类型。",
-    "CONNECTOR_NOT_BOUND": "连接器未绑定到此 Agent。",
+    "CONNECTOR_NOT_BOUND": "连接器未绑定到此专家。",
     "CONNECTOR_ALREADY_BOUND": "连接器已绑定。",
     "CONNECTOR_MCP_LOAD_FAILED": "无法加载 MCP 工具：{servers}",
     "BRIDGE_NOT_FOUND": "未找到云端协同连接。",
@@ -552,7 +552,13 @@
     "WEBAUTHN_LOGIN_DISABLED": "登录页的通行密钥登录已关闭。管理员可在「应用设置 → 通行密钥」中开启。",
     "QUOTA_CODE_INVALID": "兑换码无效，请核对后重试。",
     "QUOTA_CODE_ALREADY_USED": "这个兑换码已经被使用过了。",
-    "QUOTA_CODE_REVOKED": "这个兑换码已被作废，请联系客服。"
+    "QUOTA_CODE_REVOKED": "这个兑换码已被作废，请联系客服。",
+    "BACKUP_CLIENT_MISSING": "当前环境找不到 {tool}，无法备份或恢复 PostgreSQL。请在运行 KinoGuild 的环境中安装 PostgreSQL 客户端后再试。",
+    "THREAD_CONTRIBUTE_REQUIRES_SHARE": "只有共享专家上的会话可以共享给其他用户。",
+    "BRIDGE_PEER_FORBIDDEN": "对端登录账号没有「云端协同」权限。这项功能不限于管理员：请在对端为该账号打开云端协同权限，或改用已有该权限的账号。",
+    "BRIDGE_PEER_CONNECTION_OWNED": "对端已把这条云端协同登记在另一个用户名下，当前账号无法接管。请让原用户删除那条连接，或改用同一个对端账号。如果填写的地址其实指向本机，请改成对端的真实地址。",
+    "KNOWLEDGE_MOVE_INVALID": "不能把文件夹移动到它自身或其子文件夹中。",
+    "KNOWLEDGE_MOVE_NAME_TAKEN": "目标文件夹中已有同名项目。"
   },
   "desktop": {
     "install_log_deps": "正在安装 Python 依赖…",
@@ -1150,5 +1156,56 @@
     "datasets_required": "请先通过 list_datasets 选择 dataset_ids，或配置默认知识库 ID，再进行检索。",
     "invalid_id": "请提供有效的 {field}。",
     "unknown_tool": "未知的 RAGFlow 工具：{name}"
+  },
+  "migrate": {
+    "not_found": "未找到 {source} 的安装目录，请用 --from 指定。",
+    "nothing": "在 {home} 中没有找到可迁移的内容。",
+    "title": "{source}（{home}）→ 专家 {agent}",
+    "column": {
+      "section": "类别",
+      "item": "项目",
+      "status": "状态",
+      "note": "说明"
+    },
+    "section": {
+      "models": "模型",
+      "files": "工作区文件",
+      "skills": "技能",
+      "mcp": "MCP 服务器",
+      "channels": "通道"
+    },
+    "status": {
+      "migrated": "已迁移",
+      "would_migrate": "将迁移",
+      "skipped": "已跳过",
+      "failed": "失败"
+    },
+    "reason": {
+      "exists": "已存在",
+      "no_api_key": "未找到 API Key，请在模型配置中补充",
+      "default_model": "作为默认模型",
+      "default_model_set": "已有默认模型 {detail}",
+      "channel_disabled": "默认不启用，停用原机器人后再开启",
+      "invalid_name": "技能名称不合法",
+      "too_large": "超过 20 MB",
+      "name_reserved": "名称与内置连接器冲突",
+      "invalid": "{detail}"
+    },
+    "note": {
+      "config_missing": "未找到配置文件：{path}",
+      "config_unreadable": "无法读取 {path}：{error}",
+      "include_missing": "未找到被引用的配置文件：{path}",
+      "provider_unsupported": "模型供应商 {name}（{api}）在 KinoGuild 中没有对应类型，未迁移。",
+      "provider_key_missing": "未找到模型供应商 {name} 的 API Key，请在模型配置中添加该供应商。",
+      "mcp_sse_unsupported": "MCP 服务器 {name} 使用 SSE 传输，自定义 MCP 暂不支持。",
+      "channel_unsupported": "KinoGuild 暂不支持通道 {name}。",
+      "channel_credentials_missing": "通道账号 {name} 的凭证无法读取。",
+      "extra_agents": "其他 Agent 不会迁移（发现 {count} 个），目前只读取默认工作区。",
+      "cron_not_migrated": "定时任务不会迁移（发现 {count} 个），请用 `octop cron create` 重新创建。"
+    },
+    "summary": "已迁移 {migrated} 项，跳过 {skipped} 项，失败 {failed} 项。",
+    "summary_dry_run": "将迁移 {migrated} 项，跳过 {skipped} 项，失败 {failed} 项。",
+    "dry_run_hint": "预演模式：没有写入任何内容。去掉 --dry-run 后再运行即可执行迁移。",
+    "restart_hint": "如果 `octop run` 正在运行，请重启以加载迁移的模型供应商和通道。"
   }
 }
