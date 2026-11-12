@@ -4,7 +4,14 @@
   },
   "layout": {
     "collapsePanel": "Collapse panel",
-    "expandPanel": "Expand panel"
+    "expandPanel": "Expand panel",
+    "collapseNav": "Collapse navigation rail",
+    "expandNav": "Expand navigation rail",
+    "windowControls": "Window controls",
+    "windowMinimize": "Minimize",
+    "windowMaximize": "Maximize",
+    "windowRestore": "Restore",
+    "windowClose": "Close"
   },
   "desktopChrome": {
     "group": "Window controls",
@@ -246,7 +253,13 @@
     "WEBAUTHN_LOGIN_DISABLED": "Passkey sign-in on the login page is turned off. An administrator can enable it under App settings → Passkeys.",
     "QUOTA_CODE_INVALID": "This top-up code is not valid. Check the code and try again.",
     "QUOTA_CODE_ALREADY_USED": "This top-up code has already been used.",
-    "QUOTA_CODE_REVOKED": "This top-up code has been revoked. Contact support."
+    "QUOTA_CODE_REVOKED": "This top-up code has been revoked. Contact support.",
+    "BACKUP_CLIENT_MISSING": "PostgreSQL backup needs {{tool}}, which is not installed. Install the PostgreSQL client tools where KinoGuild runs, then try again.",
+    "THREAD_CONTRIBUTE_REQUIRES_SHARE": "Only a shared expert can share a conversation with other users.",
+    "BRIDGE_PEER_FORBIDDEN": "The account you signed in with on the peer does not have Cloud collab permission. This is not limited to admins — grant that account Cloud collab on the peer, or sign in with an account that already has it.",
+    "BRIDGE_PEER_CONNECTION_OWNED": "The peer already registered this cloud collab link to another user, so this account cannot take it over. Ask that user to delete it, or sign in with the same peer account. If the address actually points at this KinoGuild, use the peer's real address instead.",
+    "KNOWLEDGE_MOVE_INVALID": "A folder cannot be moved into itself or one of its subfolders.",
+    "KNOWLEDGE_MOVE_NAME_TAKEN": "The target folder already has an item with this name."
   },
   "nav": {
     "chat": "Conversation",
@@ -646,7 +659,13 @@
     "previewChunks": "Chunks",
     "chunksEmpty": "No chunks yet. They appear after the document is indexed.",
     "chunksFailed": "Couldn't load chunks",
-    "chunkLabel": "Chunk {{n}}"
+    "chunkLabel": "Chunk {{n}}",
+    "moveEntry": "Move to…",
+    "moveTitle": "Move “{{name}}”",
+    "moveHint": "Choose the destination folder. A folder moves together with its contents.",
+    "moveConfirm": "Move",
+    "moveSuccess": "Moved",
+    "moveFailed": "Failed to move"
   },
   "setupWizard": {
     "title": "Setup Wizard",
@@ -1251,7 +1270,12 @@
     "marketUnavailable": "The expert market is temporarily unavailable. Please try again later.",
     "marketSourceRemote": "Expert Market",
     "marketScenePrev": "Scroll left",
-    "marketSceneNext": "Scroll right"
+    "marketSceneNext": "Scroll right",
+    "sceneFeatured": "Featured",
+    "featuredHint": "Expert templates that shipped with KinoGuild before the expert market",
+    "workspaceDir": "Workspace directory",
+    "workspaceDirDesc": "Filled with this expert's server default directory. You can choose another one.",
+    "workspaceDirImmutableHint": "Cannot be changed after creation."
   },
   "subagents": {
     "catalogTitle": "Manage subagents",
@@ -1332,7 +1356,9 @@
   "agent_errors": {
     "no_models_configured": "No models are configured. Go to Admin → Model Management to add a provider, then enable this expert again.",
     "model_ref_unavailable": "The default model is unavailable or disabled. Check Admin → Model Management or update this expert's default model, then try again.",
-    "start_timeout": "This expert took too long to start (storage backend I/O). Try again, or switch it to a local workspace backend."
+    "start_timeout": "This expert took too long to start (storage backend I/O). Try again, or switch it to a local workspace backend.",
+    "no_models_configured_short": "No model configured",
+    "model_ref_unavailable_short": "Default model unavailable"
   },
   "stream_errors": {
     "stream_stall": "The model stopped sending content while the connection stayed open. Click Retry, or try again later with another model. If this happens often, check the provider status or ask an admin to review stream timeout settings.",
@@ -1897,7 +1923,14 @@
     "decisionRequestFailedStatus": "Failed",
     "composerHint": "Enter to send / Shift+Enter for a new line",
     "expertListHiddenCollapse": "Collapse hidden experts",
-    "trajectorySystemPrompt": "System prompt"
+    "trajectorySystemPrompt": "System prompt",
+    "sharedTurnBusy": "The previous reply has not finished yet.",
+    "noChattableAgentsHint": "None of your experts can chat right now — enable one, or finish its model setup.",
+    "contribute": "Share conversation",
+    "uncontribute": "Stop sharing",
+    "sharedSession": "Shared",
+    "threadSettingsOwnerOnly": "Only the conversation owner can change the model and approval settings",
+    "shareFailed": "Couldn't change sharing. Try again."
   },
   "tools": {
     "unknown": "Unknown tool",
@@ -2842,7 +2875,9 @@
     "discordAllowAllChannelsHelp": "On by default; no channel IDs needed. Turn off to restrict access to the channels listed below. Mention the bot to get a reply.",
     "discordSetupHelp": "Enable Message Content Intent on the Discord Bot page and invite the bot to your server. All server text channels the bot can access are allowed by default; mention the bot to get a reply. DMs only accept the user IDs listed below; leave empty to disable DMs.",
     "telegramAllowedUsers": "Allowed Telegram user IDs (comma or newline separated)",
-    "telegramAllowedUsersHelp": "Only these numeric user IDs can talk to the bot, in private chats and groups. Leave empty to let anyone who finds the bot use it."
+    "telegramAllowedUsersHelp": "Only these numeric user IDs can talk to the bot, in private chats and groups. Leave empty to let anyone who finds the bot use it.",
+    "lastInbound": "Last inbound {{time}}",
+    "channelHealth": "Reconnects {{reconnect}}, dropped stale {{stale}}, duplicate {{duplicate}}"
   },
   "tokenUsage": {
     "title": "Token Usage Analytics",
@@ -2917,7 +2952,8 @@
     "modelCalls": "Model Calls",
     "question": "Question",
     "answer": "Answer",
-    "dataDisclaimer": "Figures are for reference only. Some token usage is not counted yet, such as memory summarization and recall."
+    "dataDisclaimer": "Figures are for reference only. Some token usage is not counted yet, such as memory summarization and recall.",
+    "userBreakdown": "By user"
   },
   "sessions": {
     "title": "Sessions",
@@ -3291,7 +3327,7 @@
     "providersTitle": "Providers",
     "providersDescription": "Configure API keys and endpoints for each provider.",
     "llmTitle": "LLM",
-    "llmDescription": "The system intelligently selects the best model based on message content. You can also set a preferred model.",
+    "llmDescription": "The system intelligently selects the best model based on message content. You can also set a priority model.",
     "configureProvider": "Configure {{name}}",
     "baseURL": "Base URL",
     "docs": "Docs",
@@ -3488,14 +3524,14 @@
     "costOutput": "Output Cost (per 1M tokens)",
     "templateApplied": "✓ Pre-filled from preset template. You can edit these values.",
     "modelPool": "Available Model Pool",
-    "autoRouteTooltip": "Auto mode prioritizes your preferred model and switches when the input type is incompatible",
-    "autoRouteDesc": "These models are currently available. Auto mode prioritizes your preferred model; if a message contains images or other content the current model cannot handle, the system switches to a compatible model.",
+    "autoRouteTooltip": "Auto mode uses your priority model first and switches when the input type is incompatible",
+    "autoRouteDesc": "These models are currently available. Auto mode uses your priority model first; if a message contains images or other content the current model cannot handle, the system switches to a compatible model.",
     "modelCount": "{{count}} available",
     "modelUnit": "models",
     "noModelsAvailable": "No models available. Please authorize at least one provider and configure models.",
-    "preferredModelSet": "{{model}} set as preferred model",
-    "setAsPreferred": "Set as preferred",
-    "currentPreferred": "Current preferred model",
+    "preferredModelSet": "{{model}} set as the priority model",
+    "setAsPreferred": "Use this model first for auto routing",
+    "currentPreferred": "Current priority model",
     "capReasoning": "Reasoning",
     "cap_text": "Text",
     "cap_image": "Image",
@@ -3766,7 +3802,10 @@
     "embeddingPoolKnowledgeLink": "Go to knowledge bases",
     "embeddingPoolRetest": "Test failed — click to retry",
     "embeddingProviderCreated": "Added “{{name}}”. Enable a model to show it in the list above.",
-    "embeddingFetchModelsNone": "No embedding models recognized (names must contain embed / bge / e5 / gte). You can also enter a model ID manually."
+    "embeddingFetchModelsNone": "No embedding models recognized (names must contain embed / bge / e5 / gte). You can also enter a model ID manually.",
+    "preferredModelCleared": "Priority model cleared",
+    "clearPreferred": "Clear priority model",
+    "preferredBadge": "Priority"
   },
   "advancedSettings": {
     "description": "Manage runtime configuration and environment variables.",
@@ -4003,7 +4042,11 @@
           "title": "Restart after upgrade",
           "body": "The new package only takes effect after the process restarts. Use the command that matches how you launched KinoGuild:"
         }
-      }
+      },
+      "later": "Later",
+      "shellConfirmTitle": "New version {{version}}",
+      "shellConfirmBody": "You are on {{current}}. The upgrade downloads an installer, then quits so the installer can replace the client. Your database, workspace, and settings are kept.",
+      "shellManaged": "The desktop client is updated by its shell, which detects, downloads and installs the shell, frontend and bundled Python runtime as one release."
     },
     "webauthn": {
       "title": "Passkeys (WebAuthn)",
@@ -5003,7 +5046,16 @@
       "phase_validating": "Validating backup and expert ownership",
       "phase_backing_up_current": "Backing up this expert’s current state",
       "phase_restoring": "Restoring this expert’s data",
-      "phase_restarting": "Reloading this expert"
+      "phase_restarting": "Reloading this expert",
+      "checkpointRetention": "Checkpoint retention",
+      "checkpointRetentionValue": "Newest {{keep}}, age limit {{days}}.",
+      "checkpointRetentionNoDays": "none",
+      "checkpointBackup": "Checkpoint backup",
+      "checkpointBackup_first": "Back up once before the first cleanup, {{retention}}",
+      "checkpointBackup_always": "Back up before every cleanup, {{retention}}",
+      "checkpointBackupKeepDays": "keep for {{days}} days",
+      "checkpointBackupNeverExpires": "keep indefinitely",
+      "vacuumRecommended": "Deleting old checkpoints does not shrink the file. Reclaimable space is large; run VACUUM on this SQLite file when the agent is idle."
     },
     "userFile": {
       "contextNotice": "USER.md is loaded once when a session starts and stays in that session’s context.",
@@ -5676,7 +5728,8 @@
       "submitFailed": "Could not create administrator.",
       "continue": "Continue",
       "alreadyCreated": "Administrator \"{{username}}\" has been created.",
-      "intro": "Create the first administrator account."
+      "intro": "Create the first administrator account.",
+      "introNoPassword": "Name the account on this device. No password is needed."
     },
     "model": {
       "intro": "Configure one model provider so the assistant can reply. You can skip this step and configure it later.",
@@ -6021,7 +6074,10 @@
     "mfaFailed": "Two-factor verification failed.",
     "mfaHintTotp": "Enter the 6-digit code from your authenticator app.",
     "mfaHintPasskey": "Confirm with your passkey to finish signing in.",
-    "mfaHintRecovery": "Enter one of your recovery codes."
+    "mfaHintRecovery": "Enter one of your recovery codes.",
+    "createLocalAccount": "Create a local account",
+    "signInLocalAccount": "Sign in to local account",
+    "localSignInFailed": "Could not sign in to the local account"
   },
   "invite": {
     "title": "Join with invite",
@@ -6689,7 +6745,18 @@
       "authorizing": "Authorizing…",
       "probeOk": "Probe ok — found {{count}} tools",
       "deleteConfirm": "Delete MCP server \"{{name}}\"?",
-      "deleteConfirmHint": "Saved servers are removed immediately; unsaved drafts are dropped from this editor only."
+      "deleteConfirmHint": "Saved servers are removed immediately; unsaved drafts are dropped from this editor only.",
+      "oauthClientTitle": "OAuth app credentials (optional)",
+      "oauthClientHint": "When the authorization server cannot register clients automatically, enter the OAuth app you created on that platform, and register this callback URL in the app:",
+      "oauthClientSecretSaved": "Saved. Leave empty to keep it",
+      "oauthClientSecretPlaceholder": "Leave empty for public clients",
+      "oauthScopePlaceholder": "Empty uses the scopes the server advertises; separate several with spaces",
+      "oauthAuthorizationEndpoint": "Authorization endpoint",
+      "oauthTokenEndpoint": "Token endpoint",
+      "oauthEndpointsHint": "Leave both endpoints empty to discover them from the MCP URL. Fill them in only when the server publishes no discovery metadata.",
+      "probeNeedsOAuthClient": "This MCP's authorization server cannot register clients automatically",
+      "oauthClientRequiredHint": "Enter a Client ID under OAuth app credentials, then choose Save and authorize.",
+      "saveAndAuthorize": "Save and authorize"
     },
     "configuredBadge": "Connected",
     "clickToConnect": "Click to connect",
@@ -7342,7 +7409,8 @@
     "MFA_LOCKED": "Too many MFA attempts. Try again later.",
     "MFA_REAUTH_REQUIRED": "Re-enter your password to continue.",
     "MFA_LAST_FACTOR": "Cannot remove the last MFA factor.",
-    "WEBAUTHN_CONFIG_INVALID": "Passkeys are not available on this address yet. An administrator needs to enter this site’s domain and full URL under App settings → Passkeys. If that is already saved, open the exact URL that was registered. localhost does not need this setup."
+    "WEBAUTHN_CONFIG_INVALID": "Passkeys are not available on this address yet. An administrator needs to enter this site’s domain and full URL under App settings → Passkeys. If that is already saved, open the exact URL that was registered. localhost does not need this setup.",
+    "details": "Technical details"
   },
   "adminProviders": {
     "title": "Providers",

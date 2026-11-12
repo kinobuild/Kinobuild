@@ -410,6 +410,21 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
+### 1.0.3b5 上线（2026-11-12 18:29）✅
+
+- 镜像 `octop:b5` = `c3b6f781a9ac`，**schema 27 → 28**（新增 `028_thread_contributed`：
+  上游把 `threads.contributed` 折进未发布的 025，我们已发布 026/027，故单独成号）。
+- 回滚：`octop:rollback-pre-b5`（`1cb4744e95a6`）、DB 备份
+  `backups/octop-pre-b5-20261112-1829.db.gz`、旧源码 `src.bak-20261112-1829`。
+- **桌面端保留我们的 Wails 客户端**：上游 b5 用 Electron 整壳重写了 337 个文件，
+  我们按约定不跟，`desktop/` 整目录取我们的；连带删掉两个只测 Electron 打包脚本的
+  用例，以及 `desktopChrome.test.ts` 里读 Electron `chrome.ts` 的那一条（skipIf）。
+- 依赖：harness 1.0.9、memory 1.0.4、新增 python-socks（SOCKS 代理浏览器 attach）。
+- 验收：`/api/health` version=1.0.3b5 且新增 channels 列表；水位 28；11 users / 28 agents /
+  25 threads 无损；9 条配额策略、2 个技能包完好；充值码生成→兑换→额度叠加回归通过
+  （测试数据已清，admin 恢复不限）；外网首页/下载页 200；0 错误行；Xvnc/chromium/33 字体就绪。
+- 构建耗时：本地慢网（~150 KB/s）下约 1 小时 40 分；镜像源正确时依赖层 100 秒。
+
 ### 额度与充值上线（2026-11-09 19:48）✅
 
 - 镜像 `octop:billing` = `1cb4744e95a6`，**schema 26 → 27**（新增 `quota_redeem_codes` 表）。

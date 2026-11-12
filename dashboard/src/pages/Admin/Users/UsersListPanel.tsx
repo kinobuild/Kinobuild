@@ -1782,9 +1782,7 @@ export default function UsersListPanel() {
       const data = await request<UserRow[]>("/users");
       setRows(data);
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.loadFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.loadFailed"), t));
     } finally {
       setLoading(false);
     }
@@ -1853,9 +1851,7 @@ export default function UsersListPanel() {
         batchMaxAgentsForm.resetFields();
         void refreshUsers();
       } catch (err) {
-        message.error(
-          err instanceof Error ? err.message : t("adminUsers.batchFailed"),
-        );
+        message.error(apiErrorMessage(err, t("adminUsers.batchFailed"), t));
       } finally {
         setBatchSubmitting(false);
       }
@@ -1941,9 +1937,7 @@ export default function UsersListPanel() {
       const data = await request<OctopAgent[]>("/agents?scope=all");
       setAgents(data);
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.loadFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.loadFailed"), t));
       setAgents([]);
     } finally {
       setAgentsLoading(false);
@@ -2124,9 +2118,7 @@ export default function UsersListPanel() {
       setCreateOpen(false);
       void refreshUsers();
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.createFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.createFailed"), t));
     } finally {
       setSubmitting(false);
     }
@@ -2211,9 +2203,7 @@ export default function UsersListPanel() {
       void refreshUsers();
       return true;
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.updateFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.updateFailed"), t));
       return false;
     }
   };
@@ -2237,9 +2227,7 @@ export default function UsersListPanel() {
       editForm.resetFields();
       void refreshUsers();
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.updateFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.updateFailed"), t));
     } finally {
       setEditSubmitting(false);
     }
@@ -2251,9 +2239,7 @@ export default function UsersListPanel() {
       message.success(t("adminUsers.deleteSuccess"));
       void refreshAll();
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("common.deleteFailed"),
-      );
+      message.error(apiErrorMessage(err, t("common.deleteFailed"), t));
     }
   };
 
@@ -2269,9 +2255,7 @@ export default function UsersListPanel() {
       setResetTarget(null);
       resetForm.resetFields();
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.resetFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.resetFailed"), t));
     } finally {
       setResetSubmitting(false);
     }
@@ -2293,9 +2277,7 @@ export default function UsersListPanel() {
       message.success(t("adminUsers.unlockLoginSuccess"));
       void refreshUsers();
     } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("adminUsers.unlockLoginFailed"),
-      );
+      message.error(apiErrorMessage(err, t("adminUsers.unlockLoginFailed"), t));
     }
   };
 

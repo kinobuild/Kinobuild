@@ -1,6 +1,7 @@
 import { webcrypto } from "node:crypto";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import svgr from "vite-plugin-svgr";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
@@ -152,6 +153,7 @@ export default defineConfig(({ mode }) => {
       monacoSameOrigin(__dirname),
       suppressViteDisconnectReload(),
       react(),
+      svgr(),
       VitePWA({
         // Registration is manual (injectRegister:false → sw-register.ts). The
         // generated worker activates immediately (workbox.skipWaiting below) so a

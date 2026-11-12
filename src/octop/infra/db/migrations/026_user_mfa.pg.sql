@@ -73,6 +73,7 @@ ALTER TABLE channels ADD COLUMN IF NOT EXISTS runtime_lease_token TEXT;
 ALTER TABLE channels ADD COLUMN IF NOT EXISTS runtime_lease_until BIGINT;
 ALTER TABLE channels ADD COLUMN IF NOT EXISTS runtime_generation INTEGER NOT NULL DEFAULT 0;
 
+
 CREATE TABLE IF NOT EXISTS profile_avatars (
   owner_kind TEXT NOT NULL,
   owner_id TEXT NOT NULL,
