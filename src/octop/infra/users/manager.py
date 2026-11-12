@@ -35,6 +35,7 @@ from octop.infra.users.preferences import (
     merge_preferences_json,
     validate_remote_browser_bookmarks,
 )
+from octop.infra.users.resource_policy import POLICY_TOKEN_QUOTA
 from octop.infra.utils.locale import normalize_locale
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,18 @@ class UserManager:
         self._lock = asyncio.Lock()
         self._login_max_attempts = max(1, services.config.login_max_attempts)
         self._login_lockout_seconds = max(60, services.config.login_lockout_seconds)
+
+    def _apply_default_token_quota(self, uid: int, role: str) -> None:
+        """Stamp the configured default token quota on a freshly created account.
+
+        Operators keep an unlimited admin account: ``role == "admin"`` is skipped.
+        A zero/unset ``OCTOP_DEFAULT_TOKEN_QUOTA`` keeps the upstream behavior
+        (no quota) so other deployments are unaffected.
+        """
+        default = int(getattr(self._services.config, "default_token_quota", 0) or 0)
+        if default <= 0 or role == "admin":
+            return
+        self._services.user_policy_repo.merge(uid, {POLICY_TOKEN_QUOTA: str(default)})
 
     def replace_services(self, services: SharedServices) -> None:
         """Point at a new SharedServices (control-plane DB rebind during setup)."""
@@ -186,6 +199,7 @@ class UserManager:
                         f"email {normalized_email!r} already exists",
                     ) from exc
                 raise
+            self._apply_default_token_quota(uid, role_id)
             user = User(
                 id=uid,
                 username=username,
@@ -291,6 +305,8 @@ class UserManager:
                         )
                         if sso_policies:
                             self._services.user_policy_repo.merge(uid, dict(sso_policies))
+                        else:
+                            self._apply_default_token_quota(uid, sso_role_id)
                         self._services.user_repo.upsert_sso_identity(
                             uid, provider_id=provider_id, subject=subject
                         )

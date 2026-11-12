@@ -28,6 +28,7 @@ from octop.infra.db.repos.proactive_care_config import ProactiveCareConfigRepo
 from octop.infra.db.repos.profile_avatars import ProfileAvatarRepo
 from octop.infra.db.repos.providers import ProviderRepo
 from octop.infra.db.repos.published_experts import PublishedExpertRepo
+from octop.infra.db.repos.quota_redeem_codes import QuotaRedeemCodeRepo
 from octop.infra.db.repos.resource_group_grants import ResourceGroupGrantRepo
 from octop.infra.db.repos.secrets import SecretRepo
 from octop.infra.db.repos.sessions import SessionRepo
@@ -55,6 +56,7 @@ class RepoBundle:
 
     user_repo: UserRepo
     user_policy_repo: UserPolicyRepo
+    quota_redeem_code_repo: QuotaRedeemCodeRepo
     invite_repo: InviteRepo
     agent_repo: AgentRepo
     provider_repo: SealedProviderRepo
@@ -95,6 +97,7 @@ class RepoBundle:
             db=db,
             user_repo=UserRepo(db),
             user_policy_repo=UserPolicyRepo(db),
+            quota_redeem_code_repo=QuotaRedeemCodeRepo(db),
             invite_repo=InviteRepo(db),
             agent_repo=AgentRepo(db),
             provider_repo=SealedProviderRepo(ProviderRepo(db), secret_repo),
@@ -147,6 +150,10 @@ class SharedServices:
     @property
     def user_policy_repo(self) -> UserPolicyRepo:
         return self.repos.user_policy_repo
+
+    @property
+    def quota_redeem_code_repo(self) -> QuotaRedeemCodeRepo:
+        return self.repos.quota_redeem_code_repo
 
     @property
     def invite_repo(self) -> InviteRepo:

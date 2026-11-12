@@ -28,6 +28,7 @@ from octop.api.common.usage_xlsx import build_usage_xlsx
 from octop.api.deps import current_user, get_server
 from octop.i18n import tr
 from octop.infra.errors import ErrorCode, OctopError
+from octop.infra.users.resource_policy import POLICY_TOKEN_QUOTA, token_quota_of
 from octop.infra.utils.locale import normalize_locale, resolve_request_locale
 
 router = APIRouter()
@@ -85,6 +86,23 @@ def _summary_or_raise(
         )
     except ValueError as exc:
         raise OctopError(ErrorCode.INTERNAL_ERROR, str(exc), status=400) from exc
+
+
+def _with_quota(server: Any, payload: dict[str, Any], *, user_id: int | None) -> dict[str, Any]:
+    """Attach the lifetime token quota to a usage summary.
+
+    The quota is a lifetime cap, so ``quota_used`` comes from the lifetime total
+    even when the summary window is narrower. ``None`` quota means unlimited.
+    """
+    if user_id is None:
+        return payload
+    quota = token_quota_of(server.services.user_policy_repo.get(user_id, POLICY_TOKEN_QUOTA))
+    used = int(server.services.usage_repo.total_tokens_for_user(user_id))
+    out = dict(payload)
+    out["token_quota"] = quota
+    out["quota_used"] = used
+    out["quota_remaining"] = None if quota is None else max(0, quota - used)
+    return out
 
 
 def _assert_agent_exists(server: Any, agent_id: str | None) -> None:
@@ -225,12 +243,16 @@ async def user_summary(
     _assert_agent_exists(server, agent_id)
     return _label_agent_buckets(
         server,
-        _summary_or_raise(
-            server=server,
+        _with_quota(
+            server,
+            _summary_or_raise(
+                server=server,
+                user_id=user_id,
+                agent_id=agent_id,
+                window=window,
+                granularity=granularity,
+            ),
             user_id=user_id,
-            agent_id=agent_id,
-            window=window,
-            granularity=granularity,
         ),
     )
 
