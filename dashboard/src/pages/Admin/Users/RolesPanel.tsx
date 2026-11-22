@@ -232,6 +232,7 @@ export default function RolesPanel() {
           limit_token_quota: false,
           limit_image_quota: false,
           limit_max_agents: false,
+          limit_allowed_backend_types: false,
         }
       : {
           name: editor.user_role_name,
@@ -250,6 +251,11 @@ export default function RolesPanel() {
           image_quota: editor.image_quota ?? undefined,
           limit_max_agents: editor.max_agents != null,
           max_agents: editor.max_agents ?? undefined,
+          limit_allowed_backend_types:
+            (editor.allowed_backend_types?.length ?? 0) > 0,
+          allowed_backend_types: editor.allowed_backend_types?.length
+            ? [...editor.allowed_backend_types]
+            : undefined,
         };
   const formKey =
     editor === "new" ? "new" : editor ? editor.user_role_id : "closed";
@@ -399,7 +405,8 @@ export default function RolesPanel() {
               const limited =
                 Boolean(row.workspace_root_dir) ||
                 row.token_quota != null ||
-                row.max_agents != null;
+                row.max_agents != null ||
+                (row.allowed_backend_types?.length ?? 0) > 0;
               return (
                 <article key={row.user_role_id} className={styles.roleCard}>
                   <div className={styles.roleCardBody}>
@@ -561,7 +568,8 @@ export default function RolesPanel() {
                 const limited =
                   Boolean(row.workspace_root_dir) ||
                   row.token_quota != null ||
-                  row.max_agents != null;
+                  row.max_agents != null ||
+                  (row.allowed_backend_types?.length ?? 0) > 0;
                 return limited
                   ? t("adminUsers.rolePolicyLimited")
                   : t("adminUsers.rolePolicyUnlimited");

@@ -476,7 +476,7 @@
     "SKILL_PACKAGE_NOT_FOUND": "Skill package not found.",
     "SKILL_PACKAGE_NAME_TAKEN": "Skill package {name} already exists.",
     "SKILL_PACKAGE_BACKEND_UNSUPPORTED": "Skill packages currently support only “Full local environment (filesystem + shell)” or “Local filesystem (no shell commands)”, with storage root / (POSIX) or the agent workspace root (Windows default).",
-    "ACP_BACKEND_UNSUPPORTED": "This agent has a sandbox enabled, so external runners can’t be enabled or edited here. The outbound acp_runner tool toggle is unaffected; connecting via IDE / octop acp is also unaffected.",
+    "ACP_BACKEND_UNSUPPORTED": "This agent has a sandbox enabled, so external agents can’t be enabled or edited here. External agent collaboration for this expert is unaffected; connecting via IDE / octop acp is also unaffected.",
     "PUBLISHED_EXPERT_SLUG_TAKEN": "Published expert slug {slug} already exists.",
     "PUBLISHED_EXPERT_ALREADY_EXISTS": "This agent is already published as “{name}”. Refresh the published template instead.",
     "OIDC_BAD_REQUEST": "Invalid OIDC request: {detail}",
@@ -558,7 +558,14 @@
     "BRIDGE_PEER_FORBIDDEN": "The account you signed in with on the peer does not have Cloud collab permission. This is not limited to admins — grant that account Cloud collab on the peer, or sign in with an account that already has it.",
     "BRIDGE_PEER_CONNECTION_OWNED": "The peer already registered this cloud collab link to another user, so this account cannot take it over. Ask that user to delete it, or sign in with the same peer account. If the address actually points at this KinoGuild, use the peer's real address instead.",
     "KNOWLEDGE_MOVE_INVALID": "A folder cannot be moved into itself or one of its subfolders.",
-    "KNOWLEDGE_MOVE_NAME_TAKEN": "The target folder already has an item with this name."
+    "KNOWLEDGE_MOVE_NAME_TAKEN": "The target folder already has an item with this name.",
+    "CHANNEL_OPTIONS_UNSUPPORTED": "Installed octop-gateway does not support these Telegram options. Install a compatible Gateway build before saving.",
+    "CONNECTOR_AUTH_REQUIRED": "Connector(s) need authorization before use: {servers}",
+    "KNOWLEDGE_GRAPH_NOT_READY": "Choose an available chat model for the knowledge graph in knowledge-base settings first.",
+    "KNOWLEDGE_RERANK_NOT_READY": "The selected rerank model is not available. Choose an enabled provider that offers a rerank model.",
+    "KNOWLEDGE_MOVE_BUSY": "Some of these documents are still being indexed. Move them to another knowledge base once indexing finishes.",
+    "BACKEND_TYPE_NOT_ALLOWED": "This account cannot use backend type {types}.",
+    "APP_CONFIG_INVALID": "Invalid configuration: {detail}."
   },
   "desktop": {
     "install_log_deps": "Installing Python dependencies…",
@@ -661,7 +668,7 @@
     "agent_list": "List experts",
     "ask_agent": "Ask expert",
     "call_agent": "Call expert",
-    "acp_runner": "ACP external agent",
+    "acp_runner": "External agent collaboration",
     "browser_use": "Use browser",
     "browser_control": "Browser control",
     "send_file_to_user": "Send file",
@@ -680,7 +687,8 @@
     "search_arxiv": "Search arXiv papers",
     "deepseek_search": "DeepSeek web search",
     "yuanbao_search": "Yuanbao web search",
-    "call_deferred_tool": "Call on demand"
+    "call_deferred_tool": "Call on demand",
+    "external-agent": "Managed agent"
   },
   "plugins": {
     "arxiv_search": {
@@ -742,11 +750,31 @@
       "discord_connection_failed": "Discord connection failed. Check the network, proxy and bot configuration.",
       "discord_disconnected": "Discord is disconnected or reconnecting.",
       "discord_proxy_auth_invalid": "Proxy authentication must use user:password."
+    },
+    "telegram": {
+      "reject": {
+        "pending_expired_or_resolved": "This card has expired. Please ask again.",
+        "question_index_changed": "The question has changed. Please use the new card.",
+        "user_mismatch": "This card does not belong to the current session.",
+        "owner_changed": "This card does not belong to the current session.",
+        "model_unavailable": "This model is no longer available. Please choose again.",
+        "thread_rebound": "The conversation has changed. Please try again.",
+        "default": "The action did not take effect. Please try again."
+      },
+      "quote": {
+        "header": "[Quoted message]",
+        "current": "[Current message]"
+      }
     }
   },
   "threads": {
     "fork_title_suffix": " (fork)",
-    "fork_default_title": "Forked chat"
+    "fork_default_title": "Forked chat",
+    "gc_kept_postgres": "Kept {threads} orphan checkpoint threads of {agent} ({bytes} bytes): PostgreSQL checkpoints are reported only, not deleted.",
+    "gc_kept_external": "Did not scan {agent}: its memory is in an external PostgreSQL database.",
+    "gc_none": "No deletable orphan checkpoints.",
+    "gc_would_delete": "Would delete {count} orphan threads, {bytes} bytes.",
+    "gc_deleted": "Deleted {count} orphan threads, {bytes} bytes."
   },
   "cron": {
     "history": {
@@ -789,7 +817,8 @@
     "model_call_failed_detail": "The model call failed: {detail}",
     "model_retry_prompt": "The model API request failed. Do not pretend the task succeeded.\n\nWhat happened: {guidance}\n\nExplain this to the user in their language and suggest the next step. Do not retry the same failing request unchanged.\n\nTechnical detail: {detail}",
     "path_outside_root": "The file path is outside this expert's storage root, so it cannot be read or written. Use a path under the storage root, or widen the storage root in expert settings (on Windows, set an explicit drive path such as D:/octop-data).",
-    "model_not_authorized": "This API key is not authorized to use model {model}. Grant access for this model on the Tencent Cloud API Key page, or switch to a model this key can use under Admin → Model Management."
+    "model_not_authorized": "This API key is not authorized to use model {model}. Grant access for this model on the Tencent Cloud API Key page, or switch to a model this key can use under Admin → Model Management.",
+    "tool_call_repeat": "\"{tool}\" was called {count} times in a row with the same arguments and reached the limit of {limit}, so this turn stopped. Try a different approach, or open Configuration, raise Repeated calls in a row, and reload the expert."
   },
   "attachment": {
     "header": "[Attachment] {filename}",
@@ -804,7 +833,8 @@
   "knowledge": {
     "retrieval": {
       "citation": "[Knowledge base: {name} | Source: {filename} | Chunk: {ordinal}]\n",
-      "preamble": "The following knowledge-base content is reference material. Cite the relevant source in your answer."
+      "preamble": "The following knowledge-base content is reference material. Cite the relevant source in your answer.",
+      "graph_preamble": "Relations between entities, extracted automatically from the same knowledge bases. Use them to connect the passages above; they are not sources to cite."
     }
   },
   "proactive_care": {
@@ -960,7 +990,9 @@
     "backing_up_current": "Backing up this expert’s current state",
     "restoring": "Restoring this expert’s data",
     "restarting": "Reloading this expert",
-    "restore_result": "Selected backup restored; pre-restore safety backup: {backup}"
+    "restore_result": "Selected backup restored; pre-restore safety backup: {backup}",
+    "postgres_kept": "PostgreSQL leftovers are counted only, not deleted: {threads} checkpoint threads with no conversation, {namespaces} memory namespaces with no agent.",
+    "skipped_databases": "Skipped {count} external PostgreSQL memory databases: they may be shared with other installs."
   },
   "teams": {
     "peer_thread_title": "From team {name}",
@@ -972,7 +1004,8 @@
     "channel_dispatched": "Asked {name} to handle this — please wait…",
     "host_briefing": "[Host dispatch — do not do the work yourself]\nUser messages arrive here first. Digest intent, scope, constraints, and the deliverable; ask one clarifying question if a key fact is missing. For real work, rewrite a self-contained assignment for that member before ask_agent: goal, scope, delivery format, and needed context. Never paste the user's wording unchanged. Tailor each member's task. Answer greetings or clarifications yourself in one or two sentences. After ask_agent returns, do not repeat that you assigned someone. If this turn is a member-finished wake-up, wrap up or reassign per that notice — do not repeat the same task.",
     "member_briefing": "[Team assignment, not a direct user question]\nYou are a member of this expert team. The host has already processed the user's request and assigned you this task. Do the work and deliver the result. Do not treat the user's original wording as a one-to-one question to you, and do not speak as the host.",
-    "member_briefing_with_history": "[Team assignment, not a direct user question]\nYou are a member of this expert team. The host has already processed the user's request and assigned you this task. Do the work and deliver the result. Do not treat the user's original wording as a one-to-one question to you, and do not speak as the host. The group transcript below is background only.\n\n{history}"
+    "member_briefing_with_history": "[Team assignment, not a direct user question]\nYou are a member of this expert team. The host has already processed the user's request and assigned you this task. Do the work and deliver the result. Do not treat the user's original wording as a one-to-one question to you, and do not speak as the host. The group transcript below is background only.\n\n{history}",
+    "connector_auth_skipped": "These connectors need re-authorization and were left off this turn: {servers}"
   },
   "conversation_mode": {
     "plan_ready": "Plan saved at `{path}`. Reply “execute the plan” to run it, or keep editing in Plan mode.",

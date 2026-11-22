@@ -14,6 +14,7 @@ from octop.infra.db.repos.user_policies import UserPolicyRepo
 from octop.infra.db.repos.users import UserRepo
 from octop.infra.errors import ErrorCode, OctopError
 from octop.infra.users.resource_policy import (
+    POLICY_ALLOWED_BACKEND_TYPES,
     POLICY_MAX_AGENTS,
     POLICY_TOKEN_QUOTA,
     POLICY_WORKSPACE_ROOT_DIR,
@@ -22,9 +23,11 @@ from octop.infra.users.resource_policy import (
     assert_backend_within_user_root,
     assert_token_quota_available,
     clamp_backend_to_workspace_root,
+    normalize_allowed_backend_types,
     normalize_workspace_root_dir,
     persisted_workspace_within_root,
     public_policy_fields,
+    raise_if_backend_types_disallowed,
 )
 
 
@@ -327,6 +330,7 @@ def test_user_policy_repo_named_rows(db: SqlitePool, tmp_path: Path) -> None:
         "token_quota": 42,
         "image_quota": None,
         "max_agents": None,
+        "allowed_backend_types": None,
     }
     root = policies.get(uid, POLICY_WORKSPACE_ROOT_DIR)
     assert root is not None
@@ -496,18 +500,22 @@ def test_every_known_policy_is_wired_through_the_stack() -> None:
     assert not missing_from_setter, f"{missing_from_setter} missing from set_resource_policy"
 
 
-def test_role_router_has_no_private_policy_whitelist() -> None:
-    """The router must consume the shared name set, not its own copy.
+def test_role_router_whitelist_covers_every_settable_policy() -> None:
+    """The role router keeps one whitelist; it must contain every writable policy.
 
-    A duplicate list is what let the two definitions drift apart.
+    Upstream 1.0.3b7 introduced ``_KNOWN_POLICIES`` for the backend-type policy;
+    KinoGuild also keeps image quota, so the whitelist has to carry both.
     """
     from octop.api.routers import user_roles
-    from octop.infra.users.resource_policy import KNOWN_POLICIES
-
-    assert not hasattr(user_roles, "_KNOWN_POLICIES"), (
-        "role router must use KNOWN_POLICIES from resource_policy"
+    from octop.infra.users.resource_policy import (
+        KNOWN_POLICIES,
+        POLICY_ALLOWED_BACKEND_TYPES,
+        POLICY_IMAGE_QUOTA,
     )
-    assert user_roles.KNOWN_POLICIES is KNOWN_POLICIES
+
+    assert POLICY_IMAGE_QUOTA in user_roles._KNOWN_POLICIES
+    assert POLICY_ALLOWED_BACKEND_TYPES in user_roles._KNOWN_POLICIES
+    assert set(user_roles._KNOWN_POLICIES) == set(KNOWN_POLICIES) | {POLICY_ALLOWED_BACKEND_TYPES}
 
 
 def test_user_http_bodies_accept_every_known_policy() -> None:
@@ -519,14 +527,110 @@ def test_user_http_bodies_accept_every_known_policy() -> None:
     saved without effect and the account stayed unlimited.
     """
     from octop.api.routers.users import UserBatchBody, UserCreateBody, UserPatchBody
-    from octop.infra.users.resource_policy import KNOWN_POLICIES, POLICY_WORKSPACE_ROOT_DIR
+    from octop.infra.users.resource_policy import (
+        KNOWN_POLICIES,
+        POLICY_ALLOWED_BACKEND_TYPES,
+        POLICY_WORKSPACE_ROOT_DIR,
+    )
 
-    # The batch endpoint has no "move the workspace root" action, so it carries
-    # every policy except that one.
+    # Batch actions are a fixed list (enable/disable/delete + token/image/agent
+    # quotas), so the batch body carries neither workspace root nor the backend
+    # type policy that 1.0.3b7 introduced.
     for model, expected in (
         (UserCreateBody, KNOWN_POLICIES),
         (UserPatchBody, KNOWN_POLICIES),
-        (UserBatchBody, KNOWN_POLICIES - {POLICY_WORKSPACE_ROOT_DIR}),
+        (
+            UserBatchBody,
+            KNOWN_POLICIES - {POLICY_WORKSPACE_ROOT_DIR, POLICY_ALLOWED_BACKEND_TYPES},
+        ),
     ):
         missing = sorted(expected - set(model.model_fields))
         assert not missing, f"{model.__name__} rejects {missing}"
+
+
+def test_normalize_allowed_backend_types_orders_and_rejects_unknown() -> None:
+    assert normalize_allowed_backend_types(None) is None
+    assert normalize_allowed_backend_types("") is None
+    assert normalize_allowed_backend_types([]) is None
+    assert (
+        normalize_allowed_backend_types(["docker", "opensandbox", "filesystem", "docker"])
+        == "filesystem,docker,opensandbox"
+    )
+    assert normalize_allowed_backend_types(["shell", "docker"]) == "local_shell,docker"
+    assert normalize_allowed_backend_types(["local_shell", "shell"]) == "local_shell"
+    with pytest.raises(OctopError) as exc:
+        normalize_allowed_backend_types(["docker", "nope"])
+    assert exc.value.code is ErrorCode.FORBIDDEN
+
+
+def test_raise_if_backend_types_disallowed_walks_named_and_composite(db: SqlitePool) -> None:
+    users = UserRepo(db)
+    policies = UserPolicyRepo(db)
+    uid = users.create(username="alice", password_hash="h", role="user")
+    kinds = {"box": "docker", "disk": "filesystem", "host": "shell"}
+
+    def named_kind(name: str) -> str | None:
+        return kinds.get(name)
+
+    raise_if_backend_types_disallowed(
+        policies,
+        uid,
+        {"type": "local_shell"},
+        named_kind=named_kind,
+    )
+    policies.set(uid, POLICY_ALLOWED_BACKEND_TYPES, "docker,opensandbox")
+    spec = {
+        "type": "composite",
+        "default": {"type": "named", "name": "box"},
+        "routes": {"/data": {"type": "named", "name": "disk"}},
+    }
+    with pytest.raises(OctopError) as exc:
+        raise_if_backend_types_disallowed(policies, uid, spec, named_kind=named_kind)
+    assert exc.value.code is ErrorCode.BACKEND_TYPE_NOT_ALLOWED
+    assert exc.value.details["types"] == "filesystem"
+    raise_if_backend_types_disallowed(
+        policies,
+        uid,
+        {"type": "named", "name": "box"},
+        named_kind=named_kind,
+        require_present=True,
+    )
+    with pytest.raises(OctopError) as missing:
+        raise_if_backend_types_disallowed(
+            policies,
+            uid,
+            None,
+            named_kind=named_kind,
+            require_present=True,
+        )
+    assert missing.value.details["types"] == "local_shell"
+    # A stored filesystem route can stay; a new shell route cannot.
+    raise_if_backend_types_disallowed(
+        policies,
+        uid,
+        spec,
+        named_kind=named_kind,
+        previous=spec,
+    )
+    with pytest.raises(OctopError) as shell_blocked:
+        raise_if_backend_types_disallowed(
+            policies,
+            uid,
+            {"type": "named", "name": "host"},
+            named_kind=named_kind,
+            previous=spec,
+        )
+    assert shell_blocked.value.details["types"] == "local_shell"
+    policies.set(uid, POLICY_ALLOWED_BACKEND_TYPES, "local_shell")
+    raise_if_backend_types_disallowed(
+        policies,
+        uid,
+        {"type": "named", "name": "host"},
+        named_kind=named_kind,
+    )
+    raise_if_backend_types_disallowed(
+        policies,
+        uid,
+        {"type": "local_shell"},
+        named_kind=named_kind,
+    )
