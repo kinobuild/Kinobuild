@@ -410,6 +410,29 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
+### 1.0.3b7 上线（2026-11-23 00:41）✅
+
+- 镜像 `octop:b7` = `e6482d56d5f4`，**schema 28 → 29**（`029_users_last_login`：
+  上游把 `users.last_login_at` + 审计日志回填折进未发布的 025，我们已发布 026~028）。
+- 回滚：`octop:rollback-pre-b7`（`c3b6f781a9ac`）、DB 备份
+  `backups/octop-pre-b7-20261123-0041.db.gz`、旧源码 `src.bak-20261123-0041`。
+- **目录重组**：上游把 `docker/` 移到 `deploy/docker/`（并带来 `deploy/helm`、`deploy/k8s`）。
+  服务器已同步：`compose.sh` 指向 `deploy/docker/docker-compose*.yml`，
+  `.env` 与 `docker-compose.override.yml` 迁到 `deploy/docker/`。
+- **构建方式的永久变更**：b7 的面板涨到 1 万模块，2C/3.5G 机器跑 vite 会 OOM
+  （`NODE_MAX_OLD_SPACE_SIZE` 4G 与 1G 都失败）。现在的做法：**本机构建前端**
+  （`make build-frontend`）→ 上传 `src/octop/dashboard` 到构建目录 →
+  用 `deploy/docker/Dockerfile.prebuilt`（跳过 vite，仅保留 node 阶段给运行时用）。
+  流水线仍需 `uv.lock` 镜像源改写（同 b5 记录）。
+- 依赖：harness **1.0.11**、memory **1.0.5**、gateway **1.0.4**。
+- 策略：上游 b7 删掉了 `image_quota`，我们保留；`KNOWN_POLICIES` 纳入上游新增的
+  `allowed_backend_types`，角色路由白名单直接复用该集合。
+- 验收：`/api/health` version=1.0.3b7；水位 29 且 `users.last_login_at` 就位；
+  11 users / 28 agents / 25 threads 无损；9 条配额策略、2 个技能包、3 个电商 agent
+  的技能（5/7/3）完好；充值码生成→兑换回归通过（测试数据已清，admin 恢复不限）；
+  外网首页与下载页 200；0 错误行；Xvnc/chromium/33 字体就绪。
+- 磁盘：删掉旧回滚镜像后从 91% 降到 81%（可用 9.1G）。
+
 ### 1.0.3b5 上线（2026-11-12 18:29）✅
 
 - 镜像 `octop:b5` = `c3b6f781a9ac`，**schema 27 → 28**（新增 `028_thread_contributed`：
