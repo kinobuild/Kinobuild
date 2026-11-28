@@ -141,6 +141,7 @@ interface UserRow {
   image_quota?: number | null;
   max_agents?: number | null;
   allowed_backend_types?: string[] | null;
+  default_backend_type?: string | null;
   /** Present when the users list includes MFA status from the backend. */
   mfa_active?: boolean;
 }
@@ -169,6 +170,7 @@ export interface PolicyFormValues {
   max_agents?: number | null;
   limit_allowed_backend_types?: boolean;
   allowed_backend_types?: string[];
+  default_backend_type?: string;
 }
 
 const DEFAULT_EXPERT_TEMPLATE_ID = "general-assistant";
@@ -330,6 +332,7 @@ function policyFieldsFromRole(
     allowed_backend_types: role.allowed_backend_types?.length
       ? [...role.allowed_backend_types]
       : undefined,
+    default_backend_type: role.default_backend_type ?? undefined,
   };
 }
 
@@ -625,6 +628,7 @@ export function policyPayload(
   image_quota: number | null;
   max_agents: number | null;
   allowed_backend_types: string[] | null;
+  default_backend_type: string | null;
 } {
   return {
     workspace_root_dir:
@@ -638,6 +642,7 @@ export function policyPayload(
       values.limit_allowed_backend_types && values.allowed_backend_types?.length
         ? [...values.allowed_backend_types]
         : null,
+    default_backend_type: values.default_backend_type?.trim() || null,
   };
 }
 
@@ -666,6 +671,12 @@ export function rolePoliciesFromForm(
     policies.push({
       name: "allowed_backend_types",
       value: flat.allowed_backend_types.join(","),
+    });
+  }
+  if (flat.default_backend_type) {
+    policies.push({
+      name: "default_backend_type",
+      value: flat.default_backend_type,
     });
   }
   return policies;
@@ -866,7 +877,7 @@ const BACKEND_POLICY_GROUPS: { labelKey: string; types: readonly string[] }[] =
     },
     {
       labelKey: "storage.groupSandbox",
-      types: ["docker", "opensandbox"],
+      types: ["docker", "opensandbox", "cubesandbox"],
     },
     {
       labelKey: "storage.groupDatabase",
@@ -973,6 +984,68 @@ export function ResourcePolicyFields({
             </Form.Item>
           ) : null
         }
+      </Form.Item>
+      <Form.Item
+        noStyle
+        shouldUpdate={(prev, cur) =>
+          prev.limit_allowed_backend_types !==
+            cur.limit_allowed_backend_types ||
+          prev.allowed_backend_types !== cur.allowed_backend_types
+        }
+      >
+        {({ getFieldValue }) => {
+          const limited = Boolean(getFieldValue("limit_allowed_backend_types"));
+          const allowed = new Set(
+            (
+              (getFieldValue("allowed_backend_types") as
+                | string[]
+                | undefined) ?? []
+            ).map((type) => type),
+          );
+          return (
+            <Form.Item
+              name="default_backend_type"
+              label={t("adminUsers.policyDefaultBackendType")}
+              extra={t("adminUsers.policyDefaultBackendTypeHint")}
+              rules={[
+                {
+                  validator: async (_, value) => {
+                    if (!limited || typeof value !== "string" || !value) return;
+                    if (!allowed.has(value)) {
+                      throw new Error(
+                        t("adminUsers.policyDefaultBackendTypeNotAllowed"),
+                      );
+                    }
+                  },
+                },
+              ]}
+            >
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="text"
+                placeholder={t(
+                  "adminUsers.policyDefaultBackendTypePlaceholder",
+                )}
+                options={BACKEND_POLICY_GROUPS.map((group) => ({
+                  label: t(group.labelKey),
+                  options: group.types
+                    .filter((type) => !limited || allowed.has(type))
+                    .map((type) => {
+                      const text = backendPolicyTypeLabel(type, t);
+                      return {
+                        value: type,
+                        text,
+                        label: (
+                          <BackendTypeOptionLabel type={type} text={text} />
+                        ),
+                      };
+                    }),
+                })).filter((group) => group.options.length > 0)}
+              />
+            </Form.Item>
+          );
+        }}
       </Form.Item>
       <Form.Item
         label={t("adminUsers.policyWorkspaceRoot")}
@@ -2313,6 +2386,7 @@ export default function UsersListPanel() {
       max_agents: undefined,
       limit_allowed_backend_types: false,
       allowed_backend_types: undefined,
+      default_backend_type: undefined,
       create_default_expert: true,
       expert_template_id: DEFAULT_EXPERT_TEMPLATE_ID,
       ...(userRole ? policyFieldsFromRole(userRole, workspaceRootAllowed) : {}),
@@ -2351,6 +2425,7 @@ export default function UsersListPanel() {
       allowed_backend_types: row.allowed_backend_types?.length
         ? [...row.allowed_backend_types]
         : undefined,
+      default_backend_type: row.default_backend_type ?? undefined,
     });
   };
 
@@ -2868,7 +2943,7 @@ export default function UsersListPanel() {
         }
         open={agentDrawerUser !== null}
         onClose={() => setAgentDrawerUser(null)}
-        width={400}
+        width={520}
         destroyOnHidden
       >
         <Spin spinning={agentsLoading}>
