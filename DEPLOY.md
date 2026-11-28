@@ -410,6 +410,28 @@ curl -sI https://kinoguild.xingtudesign.com/downloads/KinoGuild-<ver>-arm64.dmg 
 
 以后每次上线在这里加一行（提交、镜像 id、schema 水位、回滚锚点、耗时反常点）。
 
+### 1.0.3b8 上线（2026-11-29 05:11）✅
+
+- 镜像 `octop:b8` = `7364d906a82e`，**schema 29 → 31**：
+  `030_thread_shares_and_cron_scripts`（cron 脚本列 + thread_shares）、
+  `031_invite_redemptions`（enabled / max_uses / use_count + 兑换表，删旧列）。
+- 回滚：`octop:rollback-pre-b8`（`e6482d56d5f4`）、DB 备份
+  `backups/octop-pre-b8-20261129-0511.db.gz`、旧源码 `src.bak-20261129-0511`。
+- 依赖：harness **1.0.13**（+ cubesandbox-native / remote-backends extras）、
+  memory **1.0.7**、gateway **1.0.5**。
+- **构建脚本固化**：`/opt/kinoguild/build_prebuilt.sh <tag>`（建前端口包 → uv.lock
+  换镜像源 → 生成 Dockerfile.prebuilt → legacy builder 构建）。前端产物仍在本机
+  `make build-frontend` 后上传到 `/opt/kinoguild/prebuilt/dashboard`。
+- 邀请迁移实测：8 条邀请保留，旧 `used_by_user_id/used_at` 回填出 **7 条兑换记录**，
+  旧列已删；`/api/users/invites` 新建→禁用端到端正常。
+- 顺手修掉一个钩子下的长期隐患：`octop.infra.git` 子进程会继承外层 `GIT_DIR` 等变量，
+  已剔除；git 相关测试统一走 `tests/support/git_env.py`。
+- 验收：version=1.0.3b8；水位 31；11 users / 28 agents / 26 threads / 2 技能包无损；
+  9 条配额 + 7 条生图额度 + 10 个充值码保留；充值码生成→兑换回归通过（测试数据已清）；
+  外网 200；0 错误行；Xvnc/chromium/33 字体/node v20 就绪。
+- 前端测试从此**全绿**：360 files / 2147 passed（b8 修好了我们此前 24 个红测试）。
+- 磁盘：删掉 b7 回滚镜像后 80%（可用 9.5G）。
+
 ### 1.0.3b7 上线（2026-11-23 00:41）✅
 
 - 镜像 `octop:b7` = `e6482d56d5f4`，**schema 28 → 29**（`029_users_last_login`：
