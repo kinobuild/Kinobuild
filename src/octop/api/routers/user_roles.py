@@ -14,7 +14,6 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel, Field
 
 from octop.api.deps import get_server, require_any_permission, require_permission
-from octop.api.routers.users import _assert_can_assign
 from octop.infra.db.repos.user_roles import (
     BUILTIN_USER_ROLE_IDS,
     UserRoleRepo,
@@ -24,20 +23,25 @@ from octop.infra.errors import ErrorCode, OctopError
 from octop.infra.users.identity import User
 from octop.infra.users.permissions import (
     ASSIGNABLE_PERMISSION_KEYS,
+    assert_can_assign_permissions,
     expand_permission_grants,
     validate_permission_keys,
 )
 from octop.infra.users.resource_policy import (
     KNOWN_POLICIES,
     POLICY_ALLOWED_BACKEND_TYPES,
+    POLICY_DEFAULT_BACKEND_TYPE,
     POLICY_IMAGE_QUOTA,
     POLICY_MAX_AGENTS,
     POLICY_TOKEN_QUOTA,
     POLICY_WORKSPACE_ROOT_DIR,
     allowed_backend_types_of,
+    assert_default_backend_allowed,
+    default_backend_type_of,
     image_quota_of,
     max_agents_of,
     normalize_allowed_backend_types,
+    normalize_default_backend_type,
     normalize_image_quota,
     normalize_max_agents,
     normalize_token_quota,
@@ -48,8 +52,8 @@ from octop.infra.users.resource_policy import (
 
 router = APIRouter()
 
-# One shared name set: upstream 1.0.3b7 added allowed_backend_types, KinoGuild
-# also keeps image quota, so both live in KNOWN_POLICIES.
+# One shared name set: upstream adds allowed_backend_types / default_backend_type,
+# KinoGuild also keeps image quota, so all of them live in KNOWN_POLICIES.
 _KNOWN_POLICIES = KNOWN_POLICIES
 
 
@@ -142,6 +146,7 @@ def _policies_from_fields(
     image_quota: int | None,
     max_agents: int | None,
     allowed_backend_types: Any,
+    default_backend_type: Any = None,
 ) -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = []
     root = normalize_workspace_root_dir(workspace_root_dir)
@@ -159,6 +164,10 @@ def _policies_from_fields(
     backends = normalize_allowed_backend_types(allowed_backend_types)
     if backends:
         items.append((POLICY_ALLOWED_BACKEND_TYPES, backends))
+    default_backend = normalize_default_backend_type(default_backend_type)
+    assert_default_backend_allowed(default_backend, backends)
+    if default_backend:
+        items.append((POLICY_DEFAULT_BACKEND_TYPE, default_backend))
     return items
 
 
@@ -177,6 +186,7 @@ def _policies_from_items(items: list[PolicyItem]) -> list[tuple[str, str]]:
         image_quota=image_quota_of(by_name.get(POLICY_IMAGE_QUOTA)),
         max_agents=max_agents_of(by_name.get(POLICY_MAX_AGENTS)),
         allowed_backend_types=by_name.get(POLICY_ALLOWED_BACKEND_TYPES),
+        default_backend_type=by_name.get(POLICY_DEFAULT_BACKEND_TYPE),
     )
 
 
@@ -202,6 +212,7 @@ def public_role(row: UserRoleRow, *, avatar_url: str | None = None) -> dict[str,
         image_quota = None
         max_agents = None
         allowed_backend_types = None
+        default_backend_type = None
     else:
         permissions = expand_permission_grants(list(row.permissions))
         system_role = "user"
@@ -212,6 +223,9 @@ def public_role(row: UserRoleRow, *, avatar_url: str | None = None) -> dict[str,
         max_agents = max_agents_of(row.policy_value(POLICY_MAX_AGENTS))
         allowed_backend_types = allowed_backend_types_of(
             row.policy_value(POLICY_ALLOWED_BACKEND_TYPES)
+        )
+        default_backend_type = default_backend_type_of(
+            row.policy_value(POLICY_DEFAULT_BACKEND_TYPE)
         )
     return {
         "user_role_id": row.user_role_id,
@@ -227,6 +241,7 @@ def public_role(row: UserRoleRow, *, avatar_url: str | None = None) -> dict[str,
         "image_quota": image_quota,
         "max_agents": max_agents,
         "allowed_backend_types": allowed_backend_types,
+        "default_backend_type": default_backend_type,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
         "avatar_icon": row.avatar_icon,
@@ -262,7 +277,7 @@ async def create_user_role(
         permissions = validate_permission_keys(body.permissions)
     except ValueError as exc:
         raise OctopError(ErrorCode.FORBIDDEN, str(exc), status=400) from exc
-    _assert_can_assign(actor, permissions)
+    assert_can_assign_permissions(actor, permissions)
     policies = _policies_for_write(body) or []
     try:
         row = _repo(server).create(
@@ -330,7 +345,7 @@ async def patch_user_role(
             permissions = validate_permission_keys(body.permissions)
         except ValueError as exc:
             raise OctopError(ErrorCode.FORBIDDEN, str(exc), status=400) from exc
-        _assert_can_assign(actor, permissions)
+        assert_can_assign_permissions(actor, permissions)
     try:
         updated = _repo(server).update(
             user_role_id,

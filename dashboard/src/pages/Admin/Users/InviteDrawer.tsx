@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Drawer,
@@ -6,16 +6,16 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Select,
   Pagination,
-  Popconfirm,
   Space,
   Spin,
   Switch,
   Tag,
   Typography,
 } from "antd";
-import { Copy, Link2, Plus, Trash2 } from "lucide-react";
+import { Copy, Link2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   SEEDED_USER_ROLE_ID,
@@ -30,9 +30,10 @@ import {
   localInviteUrl,
   type InviteRow,
   type InviteStatus,
+  type InviteUsersResponse,
 } from "../../../api/modules/invites";
 import { message } from "@/utils/antdMessage";
-import { apiErrorMessage } from "../../../utils/apiError";
+import { apiErrorMessage, parseApiError } from "../../../utils/apiError";
 import { copyText } from "../../../utils/copyText";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 import { useServerTimezone } from "../../../hooks/useServerTimezone";
@@ -42,20 +43,25 @@ import styles from "./index.module.less";
 const { Text } = Typography;
 
 const PAGE_SIZE = 5;
-
-/** Default number of registrations offered for a fresh invite link. */
-const DEFAULT_MAX_USES = 10;
+const MAX_INVITE_USES = 2_147_483_647;
+const DEFAULT_INVITE_FIELDS = { expires_in_days: 7, max_uses: 1 };
 
 const STATUS_COLOR: Record<InviteStatus, string> = {
-  pending: "processing",
-  used: "success",
+  active: "processing",
+  disabled: "warning",
   expired: "default",
-  revoked: "warning",
 };
 
 interface InviteDrawerProps {
   open: boolean;
   onClose: () => void;
+}
+
+interface InviteFormValues {
+  note?: string;
+  expires_in_days: number;
+  max_uses: number;
+  role?: string;
 }
 
 function presetInviteRoleId(
@@ -79,14 +85,14 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
   const [rows, setRows] = useState<InviteRow[]>([]);
   const [page, setPage] = useState(1);
   const [roles, setRoles] = useState<UserRole[]>([]);
-  const [form] = Form.useForm<{
-    note?: string;
-    expires_in_days: number;
-    role?: string;
-    max_uses: number;
-    unlimited: boolean;
-  }>();
-  const unlimited = Form.useWatch("unlimited", form);
+  const [selectedInvite, setSelectedInvite] = useState<InviteRow | null>(null);
+  const [inviteUsers, setInviteUsers] = useState<InviteUsersResponse | null>(
+    null,
+  );
+  const [usersLoading, setUsersLoading] = useState(false);
+  const usersRequest = useRef(0);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [form] = Form.useForm<InviteFormValues>();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -102,27 +108,20 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
   useEffect(() => {
     if (!open) return;
     setPage(1);
+    form.setFieldsValue({
+      ...DEFAULT_INVITE_FIELDS,
+      note: undefined,
+      role: undefined,
+    });
     void refresh();
     void userRolesApi
       .list()
       .then((loaded) => {
         setRoles(loaded);
-        form.setFieldsValue({
-          expires_in_days: 7,
-          note: undefined,
-          role: presetInviteRoleId(loaded, actorIsAdmin),
-          max_uses: DEFAULT_MAX_USES,
-          unlimited: false,
-        });
+        form.setFieldValue("role", presetInviteRoleId(loaded, actorIsAdmin));
       })
       .catch((err) => {
         setRoles([]);
-        form.setFieldsValue({
-          expires_in_days: 7,
-          note: undefined,
-          max_uses: DEFAULT_MAX_USES,
-          unlimited: false,
-        });
         message.error(apiErrorMessage(err, t("adminUsers.roleLoadFailed"), t));
       });
   }, [actorIsAdmin, open, form, refresh, t]);
@@ -138,28 +137,20 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
     if (page !== safePage) setPage(safePage);
   }, [page, safePage]);
 
-  const onCreate = async (values: {
-    note?: string;
-    expires_in_days: number;
-    role?: string;
-    max_uses: number;
-    unlimited: boolean;
-  }) => {
+  const onCreate = async (values: InviteFormValues) => {
     setCreating(true);
     try {
       const row = await invitesApi.create({
         note: values.note?.trim() || null,
         expires_in_days: values.expires_in_days,
+        max_uses: values.max_uses,
         role: values.role,
-        max_uses: values.unlimited ? null : values.max_uses,
       });
       message.success(t("adminUsers.inviteCreateSuccess"));
       form.setFieldsValue({
+        ...DEFAULT_INVITE_FIELDS,
         note: undefined,
-        expires_in_days: 7,
         role: presetInviteRoleId(roles, actorIsAdmin),
-        max_uses: DEFAULT_MAX_USES,
-        unlimited: false,
       });
       setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       setPage(1);
@@ -184,16 +175,42 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
     else message.error(t("adminUsers.inviteCopyFailed"));
   };
 
-  const onRevoke = async (row: InviteRow) => {
+  const onToggle = async (row: InviteRow, enabled: boolean) => {
+    setUpdatingId(row.id);
     try {
-      const updated = await invitesApi.revoke(row.id);
+      const updated = await invitesApi.setEnabled(row.id, enabled);
       setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-      message.success(t("adminUsers.inviteRevokeSuccess"));
     } catch (err) {
       message.error(
-        apiErrorMessage(err, t("adminUsers.inviteRevokeFailed"), t),
+        apiErrorMessage(err, t("adminUsers.inviteToggleFailed"), t),
       );
+      if (parseApiError(err)?.code === "INVITE_EXHAUSTED") void refresh();
+    } finally {
+      setUpdatingId(null);
     }
+  };
+
+  const loadUsers = async (row: InviteRow, page = 1) => {
+    const request = ++usersRequest.current;
+    setUsersLoading(true);
+    try {
+      const result = await invitesApi.users(row.id, page);
+      if (request === usersRequest.current) setInviteUsers(result);
+    } catch (err) {
+      if (request === usersRequest.current) {
+        message.error(
+          apiErrorMessage(err, t("adminUsers.inviteUsersLoadFailed"), t),
+        );
+      }
+    } finally {
+      if (request === usersRequest.current) setUsersLoading(false);
+    }
+  };
+
+  const showUsers = (row: InviteRow) => {
+    setSelectedInvite(row);
+    setInviteUsers(null);
+    void loadUsers(row);
   };
 
   return (
@@ -210,12 +227,12 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
       className={styles.inviteDrawer}
       styles={{ body: { paddingTop: 12, paddingBottom: 24 } }}
     >
-      <Form
+      <Form<InviteFormValues>
         form={form}
         layout="vertical"
         requiredMark={false}
         onFinish={(v) => void onCreate(v)}
-        initialValues={{ expires_in_days: 7 }}
+        initialValues={DEFAULT_INVITE_FIELDS}
         className={styles.inviteCreateForm}
       >
         <Form.Item
@@ -290,30 +307,24 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
           name="max_uses"
           label={t("adminUsers.inviteMaxUses")}
           extra={t("adminUsers.inviteMaxUsesHint")}
-          rules={
-            unlimited
-              ? []
-              : [
-                  {
-                    required: true,
-                    message: t("adminUsers.inviteMaxUsesRequired"),
-                  },
-                ]
-          }
+          rules={[
+            {
+              required: true,
+              type: "integer",
+              min: 1,
+              max: MAX_INVITE_USES,
+              message: t("adminUsers.inviteMaxUsesInvalid", {
+                max: MAX_INVITE_USES,
+              }),
+            },
+          ]}
         >
           <InputNumber
             min={1}
-            max={1000}
-            disabled={unlimited}
+            max={MAX_INVITE_USES}
+            precision={0}
             style={{ width: "100%" }}
           />
-        </Form.Item>
-        <Form.Item
-          name="unlimited"
-          label={t("adminUsers.inviteUnlimited")}
-          valuePropName="checked"
-        >
-          <Switch />
         </Form.Item>
         <Button
           type="primary"
@@ -343,6 +354,8 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
         <>
           <div className={styles.inviteList}>
             {pagedRows.map((row) => {
+              const limitReached =
+                row.max_uses !== null && row.use_count >= row.max_uses;
               const matchedRole = roles.find(
                 (role) =>
                   role.user_role_id === row.role ||
@@ -353,19 +366,11 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
                   <div className={styles.inviteCardTop}>
                     <Space size={8} wrap>
                       <Tag color={STATUS_COLOR[row.status]}>
-                        {t(`adminUsers.inviteStatus.${row.status}`)}
+                        {limitReached && row.status === "disabled"
+                          ? t("adminUsers.inviteLimitReached")
+                          : t(`adminUsers.inviteStatus.${row.status}`)}
                       </Tag>
                       <Text code>{row.code}</Text>
-                      <Text type="secondary">
-                        {row.max_uses === null
-                          ? t("adminUsers.inviteUsedUnlimited", {
-                              used: row.used_count,
-                            })
-                          : t("adminUsers.inviteUsedCount", {
-                              used: row.used_count,
-                              max: row.max_uses,
-                            })}
-                      </Text>
                     </Space>
                     <Space size={4}>
                       <Button
@@ -375,20 +380,14 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
                         onClick={() => void onCopy(row)}
                         title={t("adminUsers.inviteCopyUrl")}
                       />
-                      {row.status === "pending" ? (
-                        <Popconfirm
-                          title={t("adminUsers.inviteRevokeConfirm")}
-                          onConfirm={() => void onRevoke(row)}
-                        >
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<Trash2 size={14} />}
-                            title={t("adminUsers.inviteRevoke")}
-                          />
-                        </Popconfirm>
-                      ) : null}
+                      <Switch
+                        size="small"
+                        checked={row.enabled}
+                        loading={updatingId === row.id}
+                        disabled={updatingId !== null || limitReached}
+                        onChange={(enabled) => void onToggle(row, enabled)}
+                        aria-label={t("adminUsers.inviteEnabled")}
+                      />
                     </Space>
                   </div>
                   <div className={styles.inviteUrlRow}>
@@ -424,6 +423,21 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
                     ) : null}
                     {row.note ? ` · ${row.note}` : ""}
                   </Text>
+                  <Button
+                    type="link"
+                    size="small"
+                    style={{ paddingInline: 0, borderInlineWidth: 0 }}
+                    onClick={() => showUsers(row)}
+                  >
+                    {row.max_uses === null
+                      ? t("adminUsers.inviteUsersCount", {
+                          count: row.use_count,
+                        })
+                      : t("adminUsers.inviteUsersCountWithLimit", {
+                          count: row.use_count,
+                          max: row.max_uses,
+                        })}
+                  </Button>
                   <div className={styles.inviteMeta}>
                     <Text type="secondary">
                       {t("adminUsers.inviteCreatedAt", {
@@ -454,6 +468,50 @@ export default function InviteDrawer({ open, onClose }: InviteDrawerProps) {
           ) : null}
         </>
       )}
+      <Modal
+        title={t("adminUsers.inviteRegisteredUsers", {
+          code: selectedInvite?.code,
+        })}
+        open={selectedInvite !== null}
+        onCancel={() => {
+          usersRequest.current += 1;
+          setSelectedInvite(null);
+        }}
+        footer={null}
+        destroyOnHidden
+      >
+        {usersLoading ? (
+          <Spin />
+        ) : !inviteUsers?.users.length ? (
+          <Empty description={t("adminUsers.inviteNoUsers")} />
+        ) : (
+          <>
+            {inviteUsers.users.map((user) => (
+              <div key={user.id}>
+                <Text>{user.display_name || user.username}</Text>
+                {user.display_name ? (
+                  <Text type="secondary"> ({user.username})</Text>
+                ) : null}
+                <Text type="secondary">
+                  {" "}
+                  · {formatServerDateTime(user.redeemed_at, timeZone)}
+                </Text>
+              </div>
+            ))}
+            {inviteUsers.total > inviteUsers.page_size ? (
+              <Pagination
+                current={inviteUsers.page}
+                pageSize={inviteUsers.page_size}
+                total={inviteUsers.total}
+                onChange={(page) =>
+                  selectedInvite && void loadUsers(selectedInvite, page)
+                }
+                showSizeChanger={false}
+              />
+            ) : null}
+          </>
+        )}
+      </Modal>
     </Drawer>
   );
 }

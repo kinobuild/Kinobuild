@@ -198,6 +198,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
            --extra browser --extra desktop --extra local-embedding --extra knowledge-ocr \
          && .venv/bin/python -c "import cv2, fastembed, huggingface_hub, mss, rapidocr, onnxruntime, pymupdf; import importlib.util; assert importlib.util.find_spec('pynput')"; \
        fi \
+    && .venv/bin/python -c "import cubesandbox; from octop_harness.backends.cube_sandbox import CubeSandbox" \
     && if dpkg -s build-essential >/dev/null 2>&1; then \
          # 依赖层已卸掉编译器。lite 没有 apt 列表，未安装就跳过。
          apt-get purge -y --auto-remove build-essential; \
